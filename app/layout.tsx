@@ -1,3 +1,5 @@
+import "./globals.css";
+
 export const metadata = {
   title: "College Flow",
   description: "Personalized college guidance",
