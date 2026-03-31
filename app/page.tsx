@@ -65,18 +65,22 @@ export default function HomePage() {
             </p>
           </div>
           <div>
-            <button
-              style={{
-                backgroundColor: "#111827",
-                color: "white",
-                border: "none",
-                padding: "12px 18px",
-                borderRadius: "10px",
-                cursor: "pointer",
-              }}
-            >
-              Get Free Matches
-            </button>
+           <a
+  href="https://forms.gle/bwH6wQFTpyC6FM7J9"
+  target="_blank"
+  rel="noreferrer"
+  style={{
+    display: "inline-block",
+    backgroundColor: "#111827",
+    color: "white",
+    textDecoration: "none",
+    padding: "12px 18px",
+    borderRadius: "10px",
+    cursor: "pointer",
+  }}
+>
+  Get Free Matches
+</a>
           </div>
         </header>
 
