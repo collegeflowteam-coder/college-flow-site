@@ -1,17 +1,608 @@
+import { useMemo, useState } from "react";
+
+type Match = {
+  school: string;
+  fit: string;
+  type: string;
+  note: string;
+};
+
+type View = "home" | "signup" | "login" | "dashboard";
+type DashboardTab = "overview" | "profile" | "status" | "matches" | "upgrade";
+
+type NavLinkProps = {
+  href: string;
+  children: React.ReactNode;
+};
+
+type DashboardNavButtonProps = {
+  value: DashboardTab;
+  label: string;
+  activeTab: DashboardTab;
+  onSelect: (tab: DashboardTab) => void;
+};
+
+type AuthCardProps = {
+  mode: "signup" | "login";
+  studentName: string;
+  studentEmail: string;
+  setStudentName: (value: string) => void;
+  setStudentEmail: (value: string) => void;
+  onBack: () => void;
+  onPrimary: () => void;
+  onSwapMode: () => void;
+  primaryButton: string;
+  secondaryButton: string;
+};
+
+type DashboardShellProps = {
+  studentName: string;
+  studentEmail: string;
+  major: string;
+  budget: string;
+  locations: string;
+  goal: string;
+  plan: string;
+  status: string;
+  matches: Match[];
+  packages: {
+    name: string;
+    price: string;
+    subtitle: string;
+    features: string[];
+    cta: string;
+    highlight: boolean;
+  }[];
+  tab: DashboardTab;
+  setTab: (tab: DashboardTab) => void;
+  setView: (view: View) => void;
+  setStudentName: (value: string) => void;
+  setStudentEmail: (value: string) => void;
+  setMajor: (value: string) => void;
+  setBudget: (value: string) => void;
+  setLocations: (value: string) => void;
+  setGoal: (value: string) => void;
+  setPlan: (value: string) => void;
+  setStatus: (value: string) => void;
+  formLink: string;
+  primaryButton: string;
+  secondaryButton: string;
+};
+
+function NavLink({ href, children }: NavLinkProps) {
+  return (
+    <a href={href} className="text-sm text-slate-600 transition hover:text-slate-900">
+      {children}
+    </a>
+  );
+}
+
+function DashboardNavButton({ value, label, activeTab, onSelect }: DashboardNavButtonProps) {
+  const active = activeTab === value;
+
+  return (
+    <button
+      onClick={() => onSelect(value)}
+      className={`w-full rounded-2xl px-4 py-3 text-left text-sm font-medium transition ${
+        active ? "bg-slate-900 text-white" : "bg-white text-slate-600 hover:bg-slate-50"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
+function AuthCard({
+  mode,
+  studentName,
+  studentEmail,
+  setStudentName,
+  setStudentEmail,
+  onBack,
+  onPrimary,
+  onSwapMode,
+  primaryButton,
+  secondaryButton,
+}: AuthCardProps) {
+  return (
+    <div className="min-h-screen bg-slate-50 px-6 py-12 text-slate-900 lg:px-8">
+      <div className="mx-auto max-w-5xl overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white shadow-xl shadow-slate-200/60 lg:grid lg:grid-cols-[1fr,0.9fr]">
+        <div className="p-8 lg:p-12">
+          <button onClick={onBack} className="mb-8 text-sm font-medium text-slate-500 hover:text-slate-900">
+            ← Back to site
+          </button>
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">College Flow</p>
+          <h1 className="mt-3 text-4xl font-bold tracking-tight text-slate-900">
+            {mode === "signup" ? "Create your student account" : "Log back into your dashboard"}
+          </h1>
+          <p className="mt-4 max-w-xl text-lg leading-8 text-slate-600">
+            {mode === "signup"
+              ? "Start building a personal dashboard where you can track your form status, recommendations, and future upgrades."
+              : "Access your College Flow dashboard to review your status, profile, and personalized college recommendations."}
+          </p>
+
+          <div className="mt-8 grid gap-4">
+            {mode === "signup" && (
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">Full name</label>
+                <input
+                  value={studentName}
+                  onChange={(e) => setStudentName(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900"
+                  placeholder="Your full name"
+                />
+              </div>
+            )}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Email</label>
+              <input
+                value={studentEmail}
+                onChange={(e) => setStudentEmail(e.target.value)}
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900"
+                placeholder="you@example.com"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Password</label>
+              <input
+                type="password"
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900"
+                placeholder="Create a password"
+              />
+            </div>
+          </div>
+
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <button onClick={onPrimary} className={primaryButton}>
+              {mode === "signup" ? "Create Account" : "Log In"}
+            </button>
+            <button onClick={onSwapMode} className={secondaryButton}>
+              {mode === "signup" ? "Already have an account?" : "Need to create an account?"}
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-slate-900 p-8 text-white lg:p-12">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">Why accounts matter</p>
+          <h2 className="mt-3 text-3xl font-bold tracking-tight">A personal student space makes the platform feel real.</h2>
+          <div className="mt-8 space-y-4 text-sm text-slate-300">
+            <div className="rounded-2xl bg-white/10 p-4">Track your form status from submission to review.</div>
+            <div className="rounded-2xl bg-white/10 p-4">Store your personalized match list in one place.</div>
+            <div className="rounded-2xl bg-white/10 p-4">Unlock future upgrades like Stripe billing and AI counselor access.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DashboardShell({
+  studentName,
+  studentEmail,
+  major,
+  budget,
+  locations,
+  goal,
+  plan,
+  status,
+  matches,
+  packages,
+  tab,
+  setTab,
+  setView,
+  setStudentName,
+  setStudentEmail,
+  setMajor,
+  setBudget,
+  setLocations,
+  setGoal,
+  setPlan,
+  setStatus,
+  formLink,
+  primaryButton,
+  secondaryButton,
+}: DashboardShellProps) {
+  const statusStages = ["Account created", "Form submitted", "Review in progress", "Matches ready"];
+
+  const stageIsActive = (item: string) => {
+    if (item === "Account created") {
+      return ["Account created", "Form submitted", "Review in progress", "Matches ready"].includes(status);
+    }
+    if (item === "Form submitted") {
+      return ["Form submitted", "Review in progress", "Matches ready"].includes(status);
+    }
+    if (item === "Review in progress") {
+      return ["Review in progress", "Matches ready"].includes(status);
+    }
+    return status === "Matches ready";
+  };
+
+  const handleFormOpen = () => {
+    if (status === "Account created" || status === "Form not submitted") {
+      setStatus("Form submitted");
+    }
+    setTab("status");
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-900">
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
+          <button onClick={() => setView("home")} className="flex items-center gap-3 text-left">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-sm font-bold text-white">
+              CF
+            </div>
+            <div>
+              <p className="text-sm font-semibold">College Flow</p>
+              <p className="text-xs text-slate-500">Student Dashboard</p>
+            </div>
+          </button>
+
+          <div className="flex items-center gap-3">
+            <div className="hidden text-right sm:block">
+              <p className="text-sm font-semibold text-slate-900">{studentName || "Student"}</p>
+              <p className="text-xs text-slate-500">{plan} Plan</p>
+            </div>
+            <button
+              onClick={() => setView("home")}
+              className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              Back to Site
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto grid max-w-7xl gap-6 px-6 py-8 lg:grid-cols-[260px,1fr] lg:px-8">
+        <aside className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-4 rounded-[1.5rem] bg-slate-900 p-5 text-white">
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-300">Welcome back</p>
+            <h2 className="mt-2 text-2xl font-bold">{studentName || "Student"}</h2>
+            <p className="mt-1 text-sm text-slate-300">Track your progress, recommendations, and next steps.</p>
+          </div>
+
+          <div className="space-y-2">
+            <DashboardNavButton value="overview" label="Overview" activeTab={tab} onSelect={setTab} />
+            <DashboardNavButton value="profile" label="Profile" activeTab={tab} onSelect={setTab} />
+            <DashboardNavButton value="status" label="Match Status" activeTab={tab} onSelect={setTab} />
+            <DashboardNavButton value="matches" label="My Matches" activeTab={tab} onSelect={setTab} />
+            <DashboardNavButton value="upgrade" label="Upgrade" activeTab={tab} onSelect={setTab} />
+          </div>
+        </aside>
+
+        <section className="space-y-6">
+          {tab === "overview" && (
+            <>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Plan</p>
+                  <p className="mt-3 text-3xl font-bold">{plan}</p>
+                  <p className="mt-2 text-sm text-slate-500">Start free and upgrade when you want deeper support.</p>
+                </div>
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Form Status</p>
+                  <p className="mt-3 text-3xl font-bold">{status}</p>
+                  <p className="mt-2 text-sm text-slate-500">Students can track exactly where they are in the process.</p>
+                </div>
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Top Matches</p>
+                  <p className="mt-3 text-3xl font-bold">{matches.length}</p>
+                  <p className="mt-2 text-sm text-slate-500">Personalized recommendations appear here once your review is complete.</p>
+                </div>
+              </div>
+
+              <div className="grid gap-6 lg:grid-cols-[1.1fr,0.9fr]">
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">Next step</p>
+                      <h3 className="mt-1 text-2xl font-bold">Complete your match intake</h3>
+                    </div>
+                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                      Student Dashboard Live
+                    </span>
+                  </div>
+                  <p className="mt-4 max-w-2xl text-slate-600">
+                    Your dashboard is now personalized around your profile. The next step is submitting the College Flow form so your recommendations can move into review and then into your dashboard.
+                  </p>
+                  <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                    <a
+                      href={formLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={handleFormOpen}
+                      className={primaryButton}
+                    >
+                      Complete Match Form
+                    </a>
+                    <button onClick={() => setTab("profile")} className={secondaryButton}>
+                      Review Profile
+                    </button>
+                  </div>
+                </div>
+
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <p className="text-sm font-semibold text-slate-900">AI Counselor Preview</p>
+                  <div className="mt-4 space-y-3 text-sm">
+                    <div className="rounded-2xl bg-slate-100 p-3 text-slate-700">
+                      Which of my top schools is best for business and social life?
+                    </div>
+                    <div className="rounded-2xl bg-slate-900 p-3 text-white">
+                      Future premium AI guidance will help students compare schools, think through fit, and ask next-step questions inside their dashboard.
+                    </div>
+                  </div>
+                  <p className="mt-4 text-sm text-slate-500">This will become a real feature in the next build phase.</p>
+                </div>
+              </div>
+            </>
+          )}
+
+          {tab === "profile" && (
+            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">Student Profile</p>
+                  <h3 className="mt-1 text-2xl font-bold">Your dashboard details</h3>
+                </div>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">Personalized</span>
+              </div>
+
+              <div className="mt-6 grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">Full name</label>
+                  <input
+                    value={studentName}
+                    onChange={(e) => setStudentName(e.target.value)}
+                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">Email</label>
+                  <input
+                    value={studentEmail}
+                    onChange={(e) => setStudentEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">Intended major</label>
+                  <input
+                    value={major}
+                    onChange={(e) => setMajor(e.target.value)}
+                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">Budget</label>
+                  <input
+                    value={budget}
+                    onChange={(e) => setBudget(e.target.value)}
+                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="mb-2 block text-sm font-medium text-slate-700">Preferred locations</label>
+                  <input
+                    value={locations}
+                    onChange={(e) => setLocations(e.target.value)}
+                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="mb-2 block text-sm font-medium text-slate-700">Goals</label>
+                  <textarea
+                    value={goal}
+                    onChange={(e) => setGoal(e.target.value)}
+                    rows={4}
+                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                <button onClick={() => setTab("overview")} className={primaryButton}>
+                  Save Profile
+                </button>
+                <a
+                  href={formLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={handleFormOpen}
+                  className={secondaryButton}
+                >
+                  Open Match Form
+                </a>
+              </div>
+            </div>
+          )}
+
+          {tab === "status" && (
+            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <p className="text-sm font-semibold text-slate-900">Match Status</p>
+              <h3 className="mt-1 text-2xl font-bold">Track where you are in the process</h3>
+              <div className="mt-8 grid gap-4 md:grid-cols-4">
+                {statusStages.map((item) => (
+                  <div
+                    key={item}
+                    className={`rounded-[1.5rem] border p-5 ${
+                      stageIsActive(item)
+                        ? "border-slate-900 bg-slate-900 text-white"
+                        : "border-slate-200 bg-slate-50 text-slate-500"
+                    }`}
+                  >
+                    <p className="text-sm font-semibold">{item}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-8 rounded-[1.5rem] bg-slate-50 p-6">
+                <p className="text-sm font-semibold text-slate-900">Current status</p>
+                <p className="mt-2 text-3xl font-bold text-slate-900">{status}</p>
+                <p className="mt-3 max-w-2xl text-slate-600">
+                  Once your form is submitted, College Flow can move your profile into review and prepare your first personalized school list.
+                </p>
+                <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                  <a
+                    href={formLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={handleFormOpen}
+                    className={primaryButton}
+                  >
+                    Submit / Reopen Match Form
+                  </a>
+                  <button onClick={() => setStatus("Matches ready")} className={secondaryButton}>
+                    Demo: Mark Matches Ready
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {tab === "matches" && (
+            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">My Matches</p>
+                  <h3 className="mt-1 text-2xl font-bold">Your personalized recommendations</h3>
+                </div>
+                <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+                  Manual recommendations for now
+                </span>
+              </div>
+
+              <p className="mt-4 max-w-3xl text-slate-600">
+                This is where students will see their personalized college list. Right now, this can be powered by your manual recommendations while the rest of the platform grows.
+              </p>
+
+              <div className="mt-6 space-y-4">
+                {matches.map((item) => (
+                  <div key={item.school} className="rounded-[1.5rem] border border-slate-200 p-5">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-xl font-semibold text-slate-900">{item.school}</p>
+                        <p className="mt-1 text-sm font-medium text-slate-500">{item.type}</p>
+                        <p className="mt-3 max-w-2xl text-slate-600">{item.note}</p>
+                      </div>
+                      <span className="whitespace-nowrap rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">
+                        {item.fit}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {tab === "upgrade" && (
+            <div className="space-y-6">
+              <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <p className="text-sm font-semibold text-slate-900">Upgrade your experience</p>
+                <h3 className="mt-1 text-2xl font-bold">Move from free access to a deeper plan</h3>
+                <p className="mt-4 max-w-3xl text-slate-600">
+                  Stripe can be connected next so students can pay for stronger personalized recommendations, faster turnaround, and future AI counselor access.
+                </p>
+              </div>
+
+              <div className="grid gap-6 lg:grid-cols-3">
+                {packages.map((pkg) => (
+                  <div
+                    key={pkg.name}
+                    className={`rounded-[2rem] border p-8 shadow-sm ${
+                      pkg.highlight
+                        ? "border-slate-900 bg-slate-900 text-white shadow-xl"
+                        : "border-slate-200 bg-white text-slate-900"
+                    }`}
+                  >
+                    <p className="text-xl font-semibold">{pkg.name}</p>
+                    <p className={`mt-1 text-sm ${pkg.highlight ? "text-slate-300" : "text-slate-500"}`}>
+                      {pkg.subtitle}
+                    </p>
+                    <p className="mt-6 text-4xl font-bold">{pkg.price}</p>
+                    <ul className="mt-6 space-y-3 text-sm">
+                      {pkg.features.map((feature) => (
+                        <li key={feature} className="flex gap-3">
+                          <span>✓</span>
+                          <span className={pkg.highlight ? "text-slate-200" : "text-slate-600"}>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <button
+                      onClick={() => setPlan(pkg.name)}
+                      className={`mt-8 w-full rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+                        pkg.highlight
+                          ? "bg-white text-slate-900 hover:bg-slate-100"
+                          : "bg-slate-900 text-white hover:opacity-90"
+                      }`}
+                    >
+                      {pkg.name === plan ? "Current Plan" : pkg.cta}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+      </main>
+    </div>
+  );
+}
+
 export default function CollegeFlowWebsite() {
+  const [view, setView] = useState<View>("home");
+  const [tab, setTab] = useState<DashboardTab>("overview");
+
+  const formLink = "https://forms.gle/8GJKyGWV4oLTfAcU9";
+  const contactEmail = "collegeflowteam@gmail.com";
+
+  const [studentName, setStudentName] = useState("Hayden");
+  const [studentEmail, setStudentEmail] = useState("");
+  const [major, setMajor] = useState("Business");
+  const [budget, setBudget] = useState("Under $30,000 per year");
+  const [locations, setLocations] = useState("Arizona, Nevada, California");
+  const [goal, setGoal] = useState(
+    "Find a college with strong business opportunities, social life, and good long-term value."
+  );
+  const [plan, setPlan] = useState("Free");
+  const [status, setStatus] = useState("Form not submitted");
+
+  const matches: Match[] = useMemo(
+    () => [
+      {
+        school: "Arizona State University",
+        fit: "89% fit",
+        type: "Target / Strong Fit",
+        note: "Large campus, strong business pathways, warm weather, and broad student life opportunities.",
+      },
+      {
+        school: "University of Arizona",
+        fit: "91% fit",
+        type: "Target / Strong Fit",
+        note: "Great social scene, warm climate, and a strong big-school experience with wide academic options.",
+      },
+      {
+        school: "University of Nevada, Reno",
+        fit: "87% fit",
+        type: "Value / Close-to-Home Option",
+        note: "More affordable, flexible, and practical if cost and location both matter in your decision.",
+      },
+    ],
+    []
+  );
+
   const packages = [
     {
       name: "Free",
       price: "$0",
       subtitle: "Start here",
       features: [
-        "Student profile + fit quiz",
-        "5 starter college matches",
-        "Basic school-fit explanations",
-        "Limited AI advisor access",
-        "Sample savings + cost tips",
+        "Account + student dashboard",
+        "Complete College Flow intake form",
+        "Track your submission status",
+        "Starter college recommendations preview",
       ],
-      cta: "Get Free Matches",
+      cta: "Start Free",
       highlight: false,
     },
     {
@@ -19,11 +610,10 @@ export default function CollegeFlowWebsite() {
       price: "$19/mo",
       subtitle: "Best for most students",
       features: [
-        "Expanded match list",
-        "Deeper fit breakdowns",
-        "Saved colleges dashboard",
-        "25 AI advisor questions/month",
-        "Budget and scholarship guidance",
+        "Full personalized match list",
+        "Deeper school-fit explanations",
+        "Saved dashboard results",
+        "Priority review turnaround",
       ],
       cta: "Unlock Starter",
       highlight: true,
@@ -33,71 +623,119 @@ export default function CollegeFlowWebsite() {
       price: "$49/mo",
       subtitle: "Full guidance experience",
       features: [
-        "Unlimited or high-cap AI advising",
-        "Full personalized match report",
-        "College-to-college comparisons",
-        "Application strategy suggestions",
-        "Priority support + future human review add-on",
+        "Detailed personalized recommendations",
+        "Comparison notes between top schools",
+        "More strategy and next-step support",
+        "Future AI counselor access",
       ],
       cta: "Go Premium",
       highlight: false,
     },
   ];
 
-  const steps = [
-    {
-      title: "Build your profile",
-      text: "Tell College Flow your GPA, budget, intended major, preferred states, social vibe, weather, and career goals.",
-    },
-    {
-      title: "See your best-fit schools",
-      text: "Get college matches based on what actually matters to you, not just random rankings or hype.",
-    },
-    {
-      title: "Use the AI advisor",
-      text: "Ask follow-up questions, compare schools, and get guidance that feels personal and easy to understand.",
-    },
-  ];
-
-  const results = [
-    {
-      school: "University of Arizona",
-      fit: "91% fit",
-      note: "Strong social scene, warm weather, good business pathways, and a large-campus feel.",
-    },
-    {
-      school: "University of Nevada, Reno",
-      fit: "87% fit",
-      note: "Closer to home, more affordable, solid student life, and flexible major options.",
-    },
-    {
-      school: "Arizona State University",
-      fit: "89% fit",
-      note: "Big-campus energy, broad major options, strong alumni network, and sunny location.",
-    },
-  ];
-
   const faqs = [
     {
-      q: "Is College Flow free to try?",
-      a: "Yes. Students can create an account, complete the fit quiz, and see starter matches before deciding whether to upgrade.",
-    },
-    {
-      q: "How is this different from a generic college search?",
-      a: "College Flow is built around personal fit: budget, goals, location, social preferences, and long-term outcomes — not just prestige.",
+      q: "Do I need an account to use College Flow?",
+      a: "Creating an account gives students a personal dashboard where they can track form status, view recommendations, and manage future upgrades.",
     },
     {
       q: "Does College Flow guarantee admission?",
-      a: "No. It is a guidance platform designed to help students make smarter decisions and build a better college list.",
+      a: "No. College Flow is designed to help students make stronger, more informed college choices based on fit, affordability, and long-term goals.",
     },
     {
-      q: "Can parents use it too?",
-      a: "Yes. The platform can support both students and families, especially for cost, fit, and comparison questions.",
+      q: "Is the AI counselor already live?",
+      a: "The AI counselor is a planned premium feature. Right now, College Flow focuses on personalized guidance, dashboard access, and strong fit-based recommendations.",
+    },
+    {
+      q: "Can parents use College Flow too?",
+      a: "Yes. Parents can use College Flow to understand cost, fit, and better compare school options with their student.",
     },
   ];
 
-  const formLink = "https://forms.gle/jsFdWdxJJh1Ta6eg7";
-  const contactEmail = "collegeflowteam@gmail.com";
+  const primaryButton =
+    "rounded-2xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:opacity-95";
+  const secondaryButton =
+    "rounded-2xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50";
+
+  const handleDemoSignup = () => {
+    if (!studentEmail.trim()) return;
+    setStatus("Account created");
+    setView("dashboard");
+    setTab("overview");
+  };
+
+  const handleDemoLogin = () => {
+    setView("dashboard");
+    setTab("overview");
+    if (status === "Form not submitted") {
+      setStatus("Account created");
+    }
+  };
+
+  if (view === "signup") {
+    return (
+      <AuthCard
+        mode="signup"
+        studentName={studentName}
+        studentEmail={studentEmail}
+        setStudentName={setStudentName}
+        setStudentEmail={setStudentEmail}
+        onBack={() => setView("home")}
+        onPrimary={handleDemoSignup}
+        onSwapMode={() => setView("login")}
+        primaryButton={primaryButton}
+        secondaryButton={secondaryButton}
+      />
+    );
+  }
+
+  if (view === "login") {
+    return (
+      <AuthCard
+        mode="login"
+        studentName={studentName}
+        studentEmail={studentEmail}
+        setStudentName={setStudentName}
+        setStudentEmail={setStudentEmail}
+        onBack={() => setView("home")}
+        onPrimary={handleDemoLogin}
+        onSwapMode={() => setView("signup")}
+        primaryButton={primaryButton}
+        secondaryButton={secondaryButton}
+      />
+    );
+  }
+
+  if (view === "dashboard") {
+    return (
+      <DashboardShell
+        studentName={studentName}
+        studentEmail={studentEmail}
+        major={major}
+        budget={budget}
+        locations={locations}
+        goal={goal}
+        plan={plan}
+        status={status}
+        matches={matches}
+        packages={packages}
+        tab={tab}
+        setTab={setTab}
+        setView={setView}
+        setStudentName={setStudentName}
+        setStudentEmail={setStudentEmail}
+        setMajor={setMajor}
+        setBudget={setBudget}
+        setLocations={setLocations}
+        setGoal={setGoal}
+        setPlan={setPlan}
+        setStatus={setStatus}
+        formLink={formLink}
+        primaryButton={primaryButton}
+        secondaryButton={secondaryButton}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
@@ -114,23 +752,27 @@ export default function CollegeFlowWebsite() {
           </div>
 
           <nav className="hidden items-center gap-8 md:flex">
-            <a href="#how-it-works" className="text-sm text-slate-600 transition hover:text-slate-900">How It Works</a>
-            <a href="#results" className="text-sm text-slate-600 transition hover:text-slate-900">Results</a>
-            <a href="#pricing" className="text-sm text-slate-600 transition hover:text-slate-900">Pricing</a>
-            <a href="#about" className="text-sm text-slate-600 transition hover:text-slate-900">About</a>
-            <a href="#faq" className="text-sm text-slate-600 transition hover:text-slate-900">FAQ</a>
-            <a href="#contact" className="text-sm text-slate-600 transition hover:text-slate-900">Contact</a>
+            <NavLink href="#how-it-works">How It Works</NavLink>
+            <NavLink href="#results">Results</NavLink>
+            <NavLink href="#pricing">Pricing</NavLink>
+            <NavLink href="#about">About</NavLink>
+            <NavLink href="#faq">FAQ</NavLink>
+            <NavLink href="#contact">Contact</NavLink>
           </nav>
 
           <div className="flex items-center gap-3">
-            <a
-              href={formLink}
-              target="_blank"
-              rel="noreferrer"
+            <button
+              onClick={() => setView("login")}
+              className="hidden rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 md:inline-flex"
+            >
+              Log In
+            </button>
+            <button
+              onClick={() => setView("signup")}
               className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:opacity-90"
             >
-              Get Free Matches
-            </a>
+              Create Account
+            </button>
           </div>
         </div>
       </header>
@@ -147,17 +789,15 @@ export default function CollegeFlowWebsite() {
                 Find colleges that actually fit you.
               </h1>
               <p className="mt-6 max-w-xl text-lg leading-8 text-slate-600">
-                College Flow helps students discover schools based on budget, major, goals, location, and lifestyle — then gives them an AI advisor to guide the next step.
+                College Flow helps students discover schools based on budget, major, goals, location, and lifestyle — then gives them a real dashboard to track next steps, recommendations, and future counselor support.
               </p>
               <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-                <a
-                  href={formLink}
-                  target="_blank"
-                  rel="noreferrer"
+                <button
+                  onClick={() => setView("signup")}
                   className="rounded-2xl bg-slate-900 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-slate-200 transition hover:-translate-y-0.5 hover:opacity-95"
                 >
-                  Get Your Free Matches
-                </a>
+                  Create My Account
+                </button>
                 <a
                   href="#how-it-works"
                   className="rounded-2xl border border-slate-300 px-6 py-3 text-base font-semibold text-slate-700 transition hover:bg-slate-50"
@@ -166,9 +806,9 @@ export default function CollegeFlowWebsite() {
                 </a>
               </div>
               <div className="mt-8 flex flex-wrap gap-6 text-sm text-slate-500">
+                <div>✓ Real student dashboard</div>
                 <div>✓ Free to start</div>
-                <div>✓ Takes under 2 minutes</div>
-                <div>✓ Built for real student fit</div>
+                <div>✓ Google Form intake for now</div>
               </div>
             </div>
 
@@ -178,28 +818,28 @@ export default function CollegeFlowWebsite() {
                   <div className="mb-4 flex items-center justify-between">
                     <div>
                       <p className="text-sm font-semibold text-slate-900">Student Dashboard</p>
-                      <p className="text-xs text-slate-500">Welcome back, Hayden</p>
+                      <p className="text-xs text-slate-500">Welcome back, {studentName}</p>
                     </div>
-                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">Free Plan</span>
+                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+                      {plan} Plan
+                    </span>
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-3">
                     <div className="rounded-2xl bg-white p-4 shadow-sm">
-                      <p className="text-xs uppercase tracking-wide text-slate-500">Profile completion</p>
-                      <p className="mt-2 text-2xl font-bold">85%</p>
-                      <div className="mt-3 h-2 rounded-full bg-slate-100">
-                        <div className="h-2 w-[85%] rounded-full bg-slate-900" />
-                      </div>
+                      <p className="text-xs uppercase tracking-wide text-slate-500">Profile</p>
+                      <p className="mt-2 text-2xl font-bold">Personal</p>
+                      <p className="mt-2 text-sm text-slate-500">Each student gets their own account, status, and results.</p>
                     </div>
                     <div className="rounded-2xl bg-white p-4 shadow-sm">
-                      <p className="text-xs uppercase tracking-wide text-slate-500">Starter matches</p>
-                      <p className="mt-2 text-2xl font-bold">5</p>
-                      <p className="mt-2 text-sm text-slate-500">Unlock full results with Starter</p>
+                      <p className="text-xs uppercase tracking-wide text-slate-500">Current status</p>
+                      <p className="mt-2 text-2xl font-bold">{status}</p>
+                      <p className="mt-2 text-sm text-slate-500">A real product feel even before full automation.</p>
                     </div>
                     <div className="rounded-2xl bg-white p-4 shadow-sm">
-                      <p className="text-xs uppercase tracking-wide text-slate-500">AI advisor credits</p>
-                      <p className="mt-2 text-2xl font-bold">2 left</p>
-                      <p className="mt-2 text-sm text-slate-500">Ask better questions before you apply</p>
+                      <p className="text-xs uppercase tracking-wide text-slate-500">Future AI</p>
+                      <p className="mt-2 text-2xl font-bold">Ready</p>
+                      <p className="mt-2 text-sm text-slate-500">The counselor can plug into this dashboard later.</p>
                     </div>
                   </div>
 
@@ -207,10 +847,12 @@ export default function CollegeFlowWebsite() {
                     <div className="rounded-2xl bg-white p-4 shadow-sm">
                       <div className="mb-3 flex items-center justify-between">
                         <p className="font-semibold text-slate-900">Top college matches</p>
-                        <button className="text-sm font-medium text-slate-500">View all</button>
+                        <button onClick={() => setView("dashboard")} className="text-sm font-medium text-slate-500">
+                          Open dashboard
+                        </button>
                       </div>
                       <div className="space-y-3">
-                        {results.map((item) => (
+                        {matches.map((item) => (
                           <div key={item.school} className="rounded-2xl border border-slate-100 p-4">
                             <div className="flex items-start justify-between gap-4">
                               <div>
@@ -228,25 +870,23 @@ export default function CollegeFlowWebsite() {
 
                     <div className="rounded-2xl bg-slate-900 p-4 text-white shadow-sm">
                       <div className="flex items-center justify-between">
-                        <p className="font-semibold">AI College Advisor</p>
-                        <span className="rounded-full bg-white/10 px-3 py-1 text-xs">Live</span>
+                        <p className="font-semibold">Next phase</p>
+                        <span className="rounded-full bg-white/10 px-3 py-1 text-xs">Phase 2</span>
                       </div>
                       <div className="mt-4 space-y-3 text-sm">
                         <div className="rounded-2xl bg-white/10 p-3">
-                          Which of my top matches gives me the best mix of social life and business opportunities?
+                          Accounts make the experience feel personal before AI is fully live.
                         </div>
                         <div className="rounded-2xl bg-white p-3 text-slate-900">
-                          Based on your profile, Arizona State looks especially strong because it combines a large student community, warm weather, and broad business pathways.
+                          Students can log in, see their own profile, track form status, and later view recommendations in one place.
                         </div>
                       </div>
-                      <a
-                        href={formLink}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-4 block w-full rounded-2xl bg-white px-4 py-3 text-center text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+                      <button
+                        onClick={() => setView("signup")}
+                        className="mt-4 w-full rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
                       >
-                        Start With Free Matches
-                      </a>
+                        Build My Account
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -258,14 +898,18 @@ export default function CollegeFlowWebsite() {
         <section id="how-it-works" className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
           <div className="max-w-2xl">
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">How it works</p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">A smarter way to narrow down colleges.</h2>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">A smarter and more personal college flow.</h2>
             <p className="mt-4 text-lg text-slate-600">
-              College Flow helps students stop guessing and start choosing schools with more confidence.
+              Students can create an account, complete the intake form, and track where they are in the recommendation process.
             </p>
           </div>
 
           <div className="mt-10 grid gap-6 md:grid-cols-3">
-            {steps.map((step, index) => (
+            {[
+              { title: "Create your account", text: "Students get a personal dashboard instead of a one-time form experience." },
+              { title: "Complete the match intake", text: "The Google Form still powers intake for now, but the site feels like a real platform." },
+              { title: "Track recommendations", text: "Recommendation status, results, and future upgrades all live inside the dashboard." },
+            ].map((step, index) => (
               <div key={step.title} className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-lg font-bold text-white">
                   {index + 1}
@@ -281,23 +925,13 @@ export default function CollegeFlowWebsite() {
           <div className="mx-auto max-w-7xl px-6 lg:px-8">
             <div className="max-w-2xl">
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">What students get</p>
-              <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Results that feel personal, not random.</h2>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">A real product feel, even before full automation.</h2>
             </div>
-
             <div className="mt-10 grid gap-6 lg:grid-cols-3">
               {[
-                {
-                  title: "Personalized match list",
-                  text: "Students get recommendations based on fit factors like cost, environment, location, academics, and long-term goals.",
-                },
-                {
-                  title: "AI-powered guidance",
-                  text: "The chatbot answers follow-up questions and makes the whole process feel less overwhelming.",
-                },
-                {
-                  title: "Clear upgrade path",
-                  text: "Students can start free, then unlock deeper insights only when they see value in the platform.",
-                },
+                { title: "Personal dashboard", text: "Each student gets a place to view their status, profile, and results." },
+                { title: "Human-powered recommendations", text: "You can still manually create strong recommendations behind the scenes for now." },
+                { title: "Scalable future", text: "Stripe, saved data, and AI counselor can plug into this structure next." },
               ].map((card) => (
                 <div key={card.title} className="rounded-[2rem] bg-white p-8 shadow-sm">
                   <h3 className="text-xl font-semibold text-slate-900">{card.title}</h3>
@@ -311,20 +945,14 @@ export default function CollegeFlowWebsite() {
         <section id="pricing" className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Pricing</p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Start free. Upgrade when you want deeper help.</h2>
-            <p className="mt-4 text-lg text-slate-600">
-              Transparent pricing that feels student-friendly and easy to understand.
-            </p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Plans designed to grow with the platform.</h2>
           </div>
-
           <div className="mt-12 grid gap-6 lg:grid-cols-3">
             {packages.map((pkg) => (
               <div
                 key={pkg.name}
                 className={`rounded-[2rem] border p-8 shadow-sm ${
-                  pkg.highlight
-                    ? "border-slate-900 bg-slate-900 text-white shadow-xl"
-                    : "border-slate-200 bg-white text-slate-900"
+                  pkg.highlight ? "border-slate-900 bg-slate-900 text-white shadow-xl" : "border-slate-200 bg-white text-slate-900"
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -340,23 +968,19 @@ export default function CollegeFlowWebsite() {
                 <ul className="mt-6 space-y-3 text-sm">
                   {pkg.features.map((feature) => (
                     <li key={feature} className="flex gap-3">
-                      <span className="mt-0.5">✓</span>
+                      <span>✓</span>
                       <span className={pkg.highlight ? "text-slate-200" : "text-slate-600"}>{feature}</span>
                     </li>
                   ))}
                 </ul>
-                <a
-                  href={formLink}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={`mt-8 block w-full rounded-2xl px-4 py-3 text-center text-sm font-semibold transition ${
-                    pkg.highlight
-                      ? "bg-white text-slate-900 hover:bg-slate-100"
-                      : "bg-slate-900 text-white hover:opacity-90"
+                <button
+                  onClick={() => setView("signup")}
+                  className={`mt-8 w-full rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+                    pkg.highlight ? "bg-white text-slate-900 hover:bg-slate-100" : "bg-slate-900 text-white hover:opacity-90"
                   }`}
                 >
                   {pkg.cta}
-                </a>
+                </button>
               </div>
             ))}
           </div>
@@ -366,38 +990,24 @@ export default function CollegeFlowWebsite() {
           <div className="mx-auto grid max-w-7xl gap-10 px-6 lg:grid-cols-[1fr,1fr] lg:px-8">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Why College Flow</p>
-              <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Built to make the college search feel less confusing.</h2>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Built to feel premium before it is fully automated.</h2>
               <p className="mt-4 text-lg leading-8 text-slate-600">
-                Too many students choose schools based on vague rankings, pressure, or incomplete information. College Flow is built to make the process more personal, more transparent, and more practical.
+                College Flow can already feel personal because each student gets their own dashboard, their own status, and their own recommendations — even while you are still powering the recommendation engine manually.
               </p>
-              <div className="mt-8 grid gap-4 sm:grid-cols-2">
-                {[
-                  "Student-first guidance",
-                  "Fit over prestige-only thinking",
-                  "Simple dashboard experience",
-                  "Designed to feel modern and trustworthy",
-                ].map((item) => (
-                  <div key={item} className="rounded-2xl bg-white p-4 shadow-sm">
-                    <p className="font-medium text-slate-900">{item}</p>
-                  </div>
-                ))}
-              </div>
             </div>
-
             <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
-              <p className="text-sm font-semibold text-slate-500">Example trust signals</p>
-              <div className="mt-6 space-y-4 text-slate-600">
+              <div className="space-y-4 text-slate-600">
                 <div className="rounded-2xl border border-slate-100 p-4">
-                  <p className="font-semibold text-slate-900">Privacy-first messaging</p>
-                  <p className="mt-1 text-sm">Student profile data is used to personalize guidance, not to overwhelm users with salesy nonsense.</p>
+                  <p className="font-semibold text-slate-900">Personal account experience</p>
+                  <p className="mt-1 text-sm">Students are not just filling out a form. They are entering a platform built around them.</p>
                 </div>
                 <div className="rounded-2xl border border-slate-100 p-4">
-                  <p className="font-semibold text-slate-900">Transparent pricing</p>
-                  <p className="mt-1 text-sm">Start free and only pay if you want deeper analysis, stronger tools, and more advisor access.</p>
+                  <p className="font-semibold text-slate-900">Manual now, scalable later</p>
+                  <p className="mt-1 text-sm">You can handle personalized school recommendations first, then layer in AI and automation later.</p>
                 </div>
                 <div className="rounded-2xl border border-slate-100 p-4">
-                  <p className="font-semibold text-slate-900">Real guidance tone</p>
-                  <p className="mt-1 text-sm">The product should feel like a trustworthy guide, not a spam funnel or fake admissions promise machine.</p>
+                  <p className="font-semibold text-slate-900">Better business foundation</p>
+                  <p className="mt-1 text-sm">This gives you a stronger product base for Stripe, saved results, and future premium features.</p>
                 </div>
               </div>
             </div>
@@ -419,45 +1029,13 @@ export default function CollegeFlowWebsite() {
           </div>
         </section>
 
-        <section className="px-6 pb-20 lg:px-8">
-          <div className="mx-auto max-w-6xl rounded-[2.5rem] bg-slate-900 px-8 py-12 text-white shadow-2xl shadow-slate-200 lg:px-12">
-            <div className="grid gap-8 lg:grid-cols-[1fr,auto] lg:items-center">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">Ready to start</p>
-                <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-                  Help students make better college decisions with more confidence.
-                </h2>
-                <p className="mt-4 max-w-2xl text-slate-300">
-                  Start with a free profile, unlock personalized matches, and turn the college search into something clear, helpful, and actually worth using.
-                </p>
-              </div>
-              <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
-                <a
-                  href={formLink}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-2xl bg-white px-6 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
-                >
-                  Get Free Matches
-                </a>
-                <a
-                  href="#pricing"
-                  className="rounded-2xl border border-white/20 px-6 py-3 text-center text-sm font-semibold text-white transition hover:bg-white/10"
-                >
-                  View Pricing
-                </a>
-              </div>
-            </div>
-          </div>
-        </section>
-
         <section id="contact" className="bg-slate-50 py-16">
           <div className="mx-auto grid max-w-7xl gap-8 px-6 lg:grid-cols-[1.1fr,0.9fr] lg:px-8">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Contact</p>
-              <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Questions before you start?</h2>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Want to see the full experience?</h2>
               <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-600">
-                College Flow is built to help students and families make clearer college decisions based on fit, affordability, goals, and lifestyle. If you have questions before filling out the match form, reach out by email.
+                Create an account, open the match intake, and start using the dashboard experience now. Stripe and AI counselor features can be layered onto this next.
               </p>
               <div className="mt-8 flex flex-col gap-4 sm:flex-row">
                 <a
@@ -466,60 +1044,30 @@ export default function CollegeFlowWebsite() {
                 >
                   Email College Flow
                 </a>
-                <a
-                  href={formLink}
-                  target="_blank"
-                  rel="noreferrer"
+                <button
+                  onClick={() => setView("signup")}
                   className="rounded-2xl border border-slate-300 px-6 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
                 >
-                  Start My Free Matches
-                </a>
+                  Create My Account
+                </button>
               </div>
             </div>
 
             <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
-              <p className="text-sm font-semibold text-slate-500">What to expect</p>
+              <p className="text-sm font-semibold text-slate-500">What Phase 2 unlocks</p>
               <div className="mt-6 space-y-4 text-sm text-slate-600">
                 <div className="rounded-2xl border border-slate-100 p-4">
-                  <p className="font-semibold text-slate-900">Quick intake</p>
-                  <p className="mt-1">The free form takes only a couple of minutes and helps College Flow understand your goals, preferences, and budget.</p>
+                  <p className="font-semibold text-slate-900">Real user flow</p>
+                  <p className="mt-1">Landing page → account → dashboard → form → recommendation status.</p>
                 </div>
                 <div className="rounded-2xl border border-slate-100 p-4">
-                  <p className="font-semibold text-slate-900">Student-first recommendations</p>
-                  <p className="mt-1">Recommendations are built around fit and practicality, not hype, pressure, or prestige-only thinking.</p>
+                  <p className="font-semibold text-slate-900">Better trust</p>
+                  <p className="mt-1">Students feel like they are using a real product instead of just clicking into a form.</p>
                 </div>
                 <div className="rounded-2xl border border-slate-100 p-4">
-                  <p className="font-semibold text-slate-900">Built for families too</p>
-                  <p className="mt-1">Parents can use College Flow to better understand cost, comparison, and school-fit conversations with their student.</p>
+                  <p className="font-semibold text-slate-900">Future paid features</p>
+                  <p className="mt-1">This makes it much easier to add Stripe and AI counselor functionality later.</p>
                 </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="privacy" className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
-          <div className="max-w-4xl rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm lg:p-10">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Privacy Policy</p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">How College Flow handles information</h2>
-            <div className="mt-6 space-y-5 text-base leading-8 text-slate-600">
-              <p>College Flow collects the information that students or families choose to submit through the intake form, such as contact details, academic information, budget preferences, location preferences, and college goals.</p>
-              <p>This information is used to provide more personalized college-match guidance, communicate about submitted requests, and improve the College Flow experience over time.</p>
-              <p>College Flow does not promise admission outcomes and does not sell student data as part of the guidance process. Information should only be submitted by users who are comfortable sharing it for college-guidance purposes.</p>
-              <p>If you would like your submitted information corrected or removed, contact <a href={`mailto:${contactEmail}`} className="font-medium text-slate-900 underline underline-offset-4">{contactEmail}</a>.</p>
-            </div>
-          </div>
-        </section>
-
-        <section id="terms" className="bg-slate-50 py-16">
-          <div className="mx-auto max-w-7xl px-6 lg:px-8">
-            <div className="max-w-4xl rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm lg:p-10">
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Terms of Service</p>
-              <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Important use terms</h2>
-              <div className="mt-6 space-y-5 text-base leading-8 text-slate-600">
-                <p>College Flow provides guidance and educational support designed to help students build a better college list and think more clearly about school fit, affordability, and long-term goals.</p>
-                <p>College Flow does not guarantee admission, scholarships, financial aid packages, transfer outcomes, or career results. Any recommendations are meant to support better decision-making, not replace official admissions or financial guidance.</p>
-                <p>Users are responsible for reviewing official school websites, admissions requirements, deadlines, and tuition details before making any final college decision.</p>
-                <p>By using College Flow, you agree to use the platform for lawful purposes and to submit accurate information to the best of your knowledge.</p>
               </div>
             </div>
           </div>
@@ -558,17 +1106,16 @@ export default function CollegeFlowWebsite() {
             <div className="mt-4 space-y-3 text-sm text-slate-500">
               <a href="#about" className="block hover:text-slate-900">About</a>
               <a href="#contact" className="block hover:text-slate-900">Contact</a>
-              <a href="#privacy" className="block hover:text-slate-900">Privacy Policy</a>
-              <a href="#terms" className="block hover:text-slate-900">Terms of Service</a>
+              <a href={`mailto:${contactEmail}`} className="block hover:text-slate-900">Email</a>
             </div>
           </div>
 
           <div>
-            <p className="text-sm font-semibold text-slate-900">Contact</p>
+            <p className="text-sm font-semibold text-slate-900">Account</p>
             <div className="mt-4 space-y-3 text-sm text-slate-500">
-              <a href={`mailto:${contactEmail}`} className="hover:text-slate-900">{contactEmail}</a>
-              <p>Built for students and families</p>
-              <p>Start free anytime</p>
+              <button onClick={() => setView("signup")} className="block hover:text-slate-900">Create Account</button>
+              <button onClick={() => setView("login")} className="block hover:text-slate-900">Log In</button>
+              <button onClick={() => setView("dashboard")} className="block hover:text-slate-900">Dashboard Demo</button>
             </div>
           </div>
         </div>
