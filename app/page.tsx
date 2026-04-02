@@ -1,4 +1,3 @@
-"use client";
 import { useMemo, useState } from "react";
 
 type Match = {
@@ -550,577 +549,110 @@ function DashboardShell({
   );
 }
 
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
+);
+
 export default function CollegeFlowWebsite() {
   const [view, setView] = useState<View>("home");
   const [tab, setTab] = useState<DashboardTab>("overview");
 
-  const formLink = "https://forms.gle/8GJKyGWV4oLTfAcU9";
+  const formLink = "https://forms.gle/Gc7tm9yBr7HkPZyp9";
   const contactEmail = "collegeflowteam@gmail.com";
 
-  const [studentName, setStudentName] = useState("Hayden");
+  const [studentName, setStudentName] = useState("");
   const [studentEmail, setStudentEmail] = useState("");
-  const [major, setMajor] = useState("Business");
-  const [budget, setBudget] = useState("Under $30,000 per year");
-  const [locations, setLocations] = useState("Arizona, Nevada, California");
-  const [goal, setGoal] = useState(
-    "Find a college with strong business opportunities, social life, and good long-term value."
-  );
+  const [password, setPassword] = useState("");
+
+  const [major, setMajor] = useState("");
+  const [budget, setBudget] = useState("");
+  const [locations, setLocations] = useState("");
+  const [goal, setGoal] = useState("");
   const [plan, setPlan] = useState("Free");
   const [status, setStatus] = useState("Form not submitted");
 
-  const matches: Match[] = useMemo(
-    () => [
-      {
-        school: "Arizona State University",
-        fit: "89% fit",
-        type: "Target / Strong Fit",
-        note: "Large campus, strong business pathways, warm weather, and broad student life opportunities.",
-      },
-      {
-        school: "University of Arizona",
-        fit: "91% fit",
-        type: "Target / Strong Fit",
-        note: "Great social scene, warm climate, and a strong big-school experience with wide academic options.",
-      },
-      {
-        school: "University of Nevada, Reno",
-        fit: "87% fit",
-        type: "Value / Close-to-Home Option",
-        note: "More affordable, flexible, and practical if cost and location both matter in your decision.",
-      },
-    ],
-    []
-  );
+  const handleSignup = async () => {
+    if (!studentEmail || !password) return alert("Enter email + password");
 
-  const packages = [
-    {
-      name: "Free",
-      price: "$0",
-      subtitle: "Start here",
-      features: [
-        "Account + student dashboard",
-        "Complete College Flow intake form",
-        "Track your submission status",
-        "Starter college recommendations preview",
-      ],
-      cta: "Start Free",
-      highlight: false,
-    },
-    {
-      name: "Starter",
-      price: "$19/mo",
-      subtitle: "Best for most students",
-      features: [
-        "Full personalized match list",
-        "Deeper school-fit explanations",
-        "Saved dashboard results",
-        "Priority review turnaround",
-      ],
-      cta: "Unlock Starter",
-      highlight: true,
-    },
-    {
-      name: "Premium",
-      price: "$49/mo",
-      subtitle: "Full guidance experience",
-      features: [
-        "Detailed personalized recommendations",
-        "Comparison notes between top schools",
-        "More strategy and next-step support",
-        "Future AI counselor access",
-      ],
-      cta: "Go Premium",
-      highlight: false,
-    },
-  ];
+    const { error } = await supabase.auth.signUp({
+      email: studentEmail,
+      password,
+    });
 
-  const faqs = [
-    {
-      q: "Do I need an account to use College Flow?",
-      a: "Creating an account gives students a personal dashboard where they can track form status, view recommendations, and manage future upgrades.",
-    },
-    {
-      q: "Does College Flow guarantee admission?",
-      a: "No. College Flow is designed to help students make stronger, more informed college choices based on fit, affordability, and long-term goals.",
-    },
-    {
-      q: "Is the AI counselor already live?",
-      a: "The AI counselor is a planned premium feature. Right now, College Flow focuses on personalized guidance, dashboard access, and strong fit-based recommendations.",
-    },
-    {
-      q: "Can parents use College Flow too?",
-      a: "Yes. Parents can use College Flow to understand cost, fit, and better compare school options with their student.",
-    },
-  ];
+    if (error) return alert(error.message);
 
-  const primaryButton =
-    "rounded-2xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:opacity-95";
-  const secondaryButton =
-    "rounded-2xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50";
-
-  const handleDemoSignup = () => {
-    if (!studentEmail.trim()) return;
-    setStatus("Account created");
+    alert("Account created! Check your email to confirm.");
     setView("dashboard");
-    setTab("overview");
   };
 
-  const handleDemoLogin = () => {
+  const handleLogin = async () => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email: studentEmail,
+      password,
+    });
+
+    if (error) return alert(error.message);
+
     setView("dashboard");
-    setTab("overview");
-    if (status === "Form not submitted") {
-      setStatus("Account created");
-    }
   };
 
   if (view === "signup") {
     return (
-      <AuthCard
-        mode="signup"
-        studentName={studentName}
-        studentEmail={studentEmail}
-        setStudentName={setStudentName}
-        setStudentEmail={setStudentEmail}
-        onBack={() => setView("home")}
-        onPrimary={handleDemoSignup}
-        onSwapMode={() => setView("login")}
-        primaryButton={primaryButton}
-        secondaryButton={secondaryButton}
-      />
+      <div className="p-10">
+        <h1>Create Account</h1>
+        <input
+          placeholder="Name"
+          value={studentName}
+          onChange={(e) => setStudentName(e.target.value)}
+        />
+        <input
+          placeholder="Email"
+          value={studentEmail}
+          onChange={(e) => setStudentEmail(e.target.value)}
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <button onClick={handleSignup}>Sign Up</button>
+      </div>
     );
   }
 
   if (view === "login") {
     return (
-      <AuthCard
-        mode="login"
-        studentName={studentName}
-        studentEmail={studentEmail}
-        setStudentName={setStudentName}
-        setStudentEmail={setStudentEmail}
-        onBack={() => setView("home")}
-        onPrimary={handleDemoLogin}
-        onSwapMode={() => setView("signup")}
-        primaryButton={primaryButton}
-        secondaryButton={secondaryButton}
-      />
+      <div className="p-10">
+        <h1>Login</h1>
+        <input
+          placeholder="Email"
+          value={studentEmail}
+          onChange={(e) => setStudentEmail(e.target.value)}
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <button onClick={handleLogin}>Login</button>
+      </div>
     );
   }
 
   if (view === "dashboard") {
-    return (
-      <DashboardShell
-        studentName={studentName}
-        studentEmail={studentEmail}
-        major={major}
-        budget={budget}
-        locations={locations}
-        goal={goal}
-        plan={plan}
-        status={status}
-        matches={matches}
-        packages={packages}
-        tab={tab}
-        setTab={setTab}
-        setView={setView}
-        setStudentName={setStudentName}
-        setStudentEmail={setStudentEmail}
-        setMajor={setMajor}
-        setBudget={setBudget}
-        setLocations={setLocations}
-        setGoal={setGoal}
-        setPlan={setPlan}
-        setStatus={setStatus}
-        formLink={formLink}
-        primaryButton={primaryButton}
-        secondaryButton={secondaryButton}
-      />
-    );
+    return <div className="p-10">Dashboard (connected to real auth now 🔥)</div>;
   }
 
   return (
-    <div className="min-h-screen bg-white text-slate-900">
-      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-sm font-bold text-white shadow-sm">
-              CF
-            </div>
-            <div>
-              <p className="text-sm font-semibold tracking-wide text-slate-900">College Flow</p>
-              <p className="text-xs text-slate-500">Personalized college guidance</p>
-            </div>
-          </div>
-
-          <nav className="hidden items-center gap-8 md:flex">
-            <NavLink href="#how-it-works">How It Works</NavLink>
-            <NavLink href="#results">Results</NavLink>
-            <NavLink href="#pricing">Pricing</NavLink>
-            <NavLink href="#about">About</NavLink>
-            <NavLink href="#faq">FAQ</NavLink>
-            <NavLink href="#contact">Contact</NavLink>
-          </nav>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setView("login")}
-              className="hidden rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 md:inline-flex"
-            >
-              Log In
-            </button>
-            <button
-              onClick={() => setView("signup")}
-              className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:opacity-90"
-            >
-              Create Account
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main>
-        <section className="relative overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.10),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.10),transparent_35%)]" />
-          <div className="relative mx-auto grid max-w-7xl items-center gap-14 px-6 py-16 lg:grid-cols-2 lg:px-8 lg:py-24">
-            <div>
-              <div className="mb-5 inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 shadow-sm">
-                Built for students who want fit, clarity, and confidence
-              </div>
-              <h1 className="max-w-2xl text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-                Find colleges that actually fit you.
-              </h1>
-              <p className="mt-6 max-w-xl text-lg leading-8 text-slate-600">
-                College Flow helps students discover schools based on budget, major, goals, location, and lifestyle — then gives them a real dashboard to track next steps, recommendations, and future counselor support.
-              </p>
-              <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-                <button
-                  onClick={() => setView("signup")}
-                  className="rounded-2xl bg-slate-900 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-slate-200 transition hover:-translate-y-0.5 hover:opacity-95"
-                >
-                  Create My Account
-                </button>
-                <a
-                  href="#how-it-works"
-                  className="rounded-2xl border border-slate-300 px-6 py-3 text-base font-semibold text-slate-700 transition hover:bg-slate-50"
-                >
-                  See How It Works
-                </a>
-              </div>
-              <div className="mt-8 flex flex-wrap gap-6 text-sm text-slate-500">
-                <div>✓ Real student dashboard</div>
-                <div>✓ Free to start</div>
-                <div>✓ Google Form intake for now</div>
-              </div>
-            </div>
-
-            <div className="relative">
-              <div className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-2xl shadow-slate-200/70">
-                <div className="rounded-[1.5rem] bg-slate-50 p-4">
-                  <div className="mb-4 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">Student Dashboard</p>
-                      <p className="text-xs text-slate-500">Welcome back, {studentName}</p>
-                    </div>
-                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-                      {plan} Plan
-                    </span>
-                  </div>
-
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <div className="rounded-2xl bg-white p-4 shadow-sm">
-                      <p className="text-xs uppercase tracking-wide text-slate-500">Profile</p>
-                      <p className="mt-2 text-2xl font-bold">Personal</p>
-                      <p className="mt-2 text-sm text-slate-500">Each student gets their own account, status, and results.</p>
-                    </div>
-                    <div className="rounded-2xl bg-white p-4 shadow-sm">
-                      <p className="text-xs uppercase tracking-wide text-slate-500">Current status</p>
-                      <p className="mt-2 text-2xl font-bold">{status}</p>
-                      <p className="mt-2 text-sm text-slate-500">A real product feel even before full automation.</p>
-                    </div>
-                    <div className="rounded-2xl bg-white p-4 shadow-sm">
-                      <p className="text-xs uppercase tracking-wide text-slate-500">Future AI</p>
-                      <p className="mt-2 text-2xl font-bold">Ready</p>
-                      <p className="mt-2 text-sm text-slate-500">The counselor can plug into this dashboard later.</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 grid gap-4 lg:grid-cols-[1.2fr,0.8fr]">
-                    <div className="rounded-2xl bg-white p-4 shadow-sm">
-                      <div className="mb-3 flex items-center justify-between">
-                        <p className="font-semibold text-slate-900">Top college matches</p>
-                        <button onClick={() => setView("dashboard")} className="text-sm font-medium text-slate-500">
-                          Open dashboard
-                        </button>
-                      </div>
-                      <div className="space-y-3">
-                        {matches.map((item) => (
-                          <div key={item.school} className="rounded-2xl border border-slate-100 p-4">
-                            <div className="flex items-start justify-between gap-4">
-                              <div>
-                                <p className="font-semibold text-slate-900">{item.school}</p>
-                                <p className="mt-1 text-sm text-slate-500">{item.note}</p>
-                              </div>
-                              <span className="whitespace-nowrap rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
-                                {item.fit}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl bg-slate-900 p-4 text-white shadow-sm">
-                      <div className="flex items-center justify-between">
-                        <p className="font-semibold">Next phase</p>
-                        <span className="rounded-full bg-white/10 px-3 py-1 text-xs">Phase 2</span>
-                      </div>
-                      <div className="mt-4 space-y-3 text-sm">
-                        <div className="rounded-2xl bg-white/10 p-3">
-                          Accounts make the experience feel personal before AI is fully live.
-                        </div>
-                        <div className="rounded-2xl bg-white p-3 text-slate-900">
-                          Students can log in, see their own profile, track form status, and later view recommendations in one place.
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => setView("signup")}
-                        className="mt-4 w-full rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
-                      >
-                        Build My Account
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="how-it-works" className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
-          <div className="max-w-2xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">How it works</p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">A smarter and more personal college flow.</h2>
-            <p className="mt-4 text-lg text-slate-600">
-              Students can create an account, complete the intake form, and track where they are in the recommendation process.
-            </p>
-          </div>
-
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
-            {[
-              { title: "Create your account", text: "Students get a personal dashboard instead of a one-time form experience." },
-              { title: "Complete the match intake", text: "The Google Form still powers intake for now, but the site feels like a real platform." },
-              { title: "Track recommendations", text: "Recommendation status, results, and future upgrades all live inside the dashboard." },
-            ].map((step, index) => (
-              <div key={step.title} className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-lg font-bold text-white">
-                  {index + 1}
-                </div>
-                <h3 className="mt-6 text-xl font-semibold text-slate-900">{step.title}</h3>
-                <p className="mt-3 leading-7 text-slate-600">{step.text}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section id="results" className="bg-slate-50 py-16">
-          <div className="mx-auto max-w-7xl px-6 lg:px-8">
-            <div className="max-w-2xl">
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">What students get</p>
-              <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">A real product feel, even before full automation.</h2>
-            </div>
-            <div className="mt-10 grid gap-6 lg:grid-cols-3">
-              {[
-                { title: "Personal dashboard", text: "Each student gets a place to view their status, profile, and results." },
-                { title: "Human-powered recommendations", text: "You can still manually create strong recommendations behind the scenes for now." },
-                { title: "Scalable future", text: "Stripe, saved data, and AI counselor can plug into this structure next." },
-              ].map((card) => (
-                <div key={card.title} className="rounded-[2rem] bg-white p-8 shadow-sm">
-                  <h3 className="text-xl font-semibold text-slate-900">{card.title}</h3>
-                  <p className="mt-3 leading-7 text-slate-600">{card.text}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section id="pricing" className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
-          <div className="mx-auto max-w-2xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Pricing</p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Plans designed to grow with the platform.</h2>
-          </div>
-          <div className="mt-12 grid gap-6 lg:grid-cols-3">
-            {packages.map((pkg) => (
-              <div
-                key={pkg.name}
-                className={`rounded-[2rem] border p-8 shadow-sm ${
-                  pkg.highlight ? "border-slate-900 bg-slate-900 text-white shadow-xl" : "border-slate-200 bg-white text-slate-900"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xl font-semibold">{pkg.name}</p>
-                    <p className={`mt-1 text-sm ${pkg.highlight ? "text-slate-300" : "text-slate-500"}`}>{pkg.subtitle}</p>
-                  </div>
-                  {pkg.highlight && (
-                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white">Most Popular</span>
-                  )}
-                </div>
-                <p className="mt-6 text-4xl font-bold">{pkg.price}</p>
-                <ul className="mt-6 space-y-3 text-sm">
-                  {pkg.features.map((feature) => (
-                    <li key={feature} className="flex gap-3">
-                      <span>✓</span>
-                      <span className={pkg.highlight ? "text-slate-200" : "text-slate-600"}>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  onClick={() => setView("signup")}
-                  className={`mt-8 w-full rounded-2xl px-4 py-3 text-sm font-semibold transition ${
-                    pkg.highlight ? "bg-white text-slate-900 hover:bg-slate-100" : "bg-slate-900 text-white hover:opacity-90"
-                  }`}
-                >
-                  {pkg.cta}
-                </button>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section id="about" className="bg-slate-50 py-16">
-          <div className="mx-auto grid max-w-7xl gap-10 px-6 lg:grid-cols-[1fr,1fr] lg:px-8">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Why College Flow</p>
-              <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Built to feel premium before it is fully automated.</h2>
-              <p className="mt-4 text-lg leading-8 text-slate-600">
-                College Flow can already feel personal because each student gets their own dashboard, their own status, and their own recommendations — even while you are still powering the recommendation engine manually.
-              </p>
-            </div>
-            <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
-              <div className="space-y-4 text-slate-600">
-                <div className="rounded-2xl border border-slate-100 p-4">
-                  <p className="font-semibold text-slate-900">Personal account experience</p>
-                  <p className="mt-1 text-sm">Students are not just filling out a form. They are entering a platform built around them.</p>
-                </div>
-                <div className="rounded-2xl border border-slate-100 p-4">
-                  <p className="font-semibold text-slate-900">Manual now, scalable later</p>
-                  <p className="mt-1 text-sm">You can handle personalized school recommendations first, then layer in AI and automation later.</p>
-                </div>
-                <div className="rounded-2xl border border-slate-100 p-4">
-                  <p className="font-semibold text-slate-900">Better business foundation</p>
-                  <p className="mt-1 text-sm">This gives you a stronger product base for Stripe, saved results, and future premium features.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="faq" className="mx-auto max-w-5xl px-6 py-16 lg:px-8">
-          <div className="text-center">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">FAQ</p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Questions students and parents might ask</h2>
-          </div>
-          <div className="mt-10 space-y-4">
-            {faqs.map((faq) => (
-              <div key={faq.q} className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-slate-900">{faq.q}</h3>
-                <p className="mt-2 leading-7 text-slate-600">{faq.a}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section id="contact" className="bg-slate-50 py-16">
-          <div className="mx-auto grid max-w-7xl gap-8 px-6 lg:grid-cols-[1.1fr,0.9fr] lg:px-8">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Contact</p>
-              <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Want to see the full experience?</h2>
-              <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-600">
-                Create an account, open the match intake, and start using the dashboard experience now. Stripe and AI counselor features can be layered onto this next.
-              </p>
-              <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-                <a
-                  href={`mailto:${contactEmail}`}
-                  className="rounded-2xl bg-slate-900 px-6 py-3 text-center text-sm font-semibold text-white transition hover:opacity-90"
-                >
-                  Email College Flow
-                </a>
-                <button
-                  onClick={() => setView("signup")}
-                  className="rounded-2xl border border-slate-300 px-6 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-                >
-                  Create My Account
-                </button>
-              </div>
-            </div>
-
-            <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
-              <p className="text-sm font-semibold text-slate-500">What Phase 2 unlocks</p>
-              <div className="mt-6 space-y-4 text-sm text-slate-600">
-                <div className="rounded-2xl border border-slate-100 p-4">
-                  <p className="font-semibold text-slate-900">Real user flow</p>
-                  <p className="mt-1">Landing page → account → dashboard → form → recommendation status.</p>
-                </div>
-                <div className="rounded-2xl border border-slate-100 p-4">
-                  <p className="font-semibold text-slate-900">Better trust</p>
-                  <p className="mt-1">Students feel like they are using a real product instead of just clicking into a form.</p>
-                </div>
-                <div className="rounded-2xl border border-slate-100 p-4">
-                  <p className="font-semibold text-slate-900">Future paid features</p>
-                  <p className="mt-1">This makes it much easier to add Stripe and AI counselor functionality later.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      <footer className="border-t border-slate-200 bg-white">
-        <div className="mx-auto grid max-w-7xl gap-10 px-6 py-10 lg:grid-cols-[1.2fr,0.8fr,0.8fr,0.8fr] lg:px-8">
-          <div>
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-sm font-bold text-white">
-                CF
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-slate-900">College Flow</p>
-                <p className="text-xs text-slate-500">College guidance made more personal</p>
-              </div>
-            </div>
-            <p className="mt-4 max-w-sm text-sm leading-6 text-slate-500">
-              Built to help students choose colleges based on real fit factors like goals, cost, location, and lifestyle.
-            </p>
-          </div>
-
-          <div>
-            <p className="text-sm font-semibold text-slate-900">Product</p>
-            <div className="mt-4 space-y-3 text-sm text-slate-500">
-              <a href="#how-it-works" className="block hover:text-slate-900">How It Works</a>
-              <a href="#pricing" className="block hover:text-slate-900">Pricing</a>
-              <a href="#results" className="block hover:text-slate-900">Results</a>
-              <a href="#faq" className="block hover:text-slate-900">FAQ</a>
-            </div>
-          </div>
-
-          <div>
-            <p className="text-sm font-semibold text-slate-900">Company</p>
-            <div className="mt-4 space-y-3 text-sm text-slate-500">
-              <a href="#about" className="block hover:text-slate-900">About</a>
-              <a href="#contact" className="block hover:text-slate-900">Contact</a>
-              <a href={`mailto:${contactEmail}`} className="block hover:text-slate-900">Email</a>
-            </div>
-          </div>
-
-          <div>
-            <p className="text-sm font-semibold text-slate-900">Account</p>
-            <div className="mt-4 space-y-3 text-sm text-slate-500">
-              <button onClick={() => setView("signup")} className="block hover:text-slate-900">Create Account</button>
-              <button onClick={() => setView("login")} className="block hover:text-slate-900">Log In</button>
-              <button onClick={() => setView("dashboard")} className="block hover:text-slate-900">Dashboard Demo</button>
-            </div>
-          </div>
-        </div>
-      </footer>
+    <div className="p-10">
+      <h1>College Flow</h1>
+      <button onClick={() => setView("signup")}>Sign Up</button>
+      <button onClick={() => setView("login")}>Login</button>
     </div>
   );
 }
