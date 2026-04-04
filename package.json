@@ -6,13 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start"
-  }
-"dependencies": {
-  "@supabase/supabase-js": "latest",
-  "next": "latest",
-  "react": "latest",
-  "react-dom": "latest"
-}
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "latest",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest"
+  },
   "devDependencies": {
     "@tailwindcss/postcss": "latest",
     "@types/node": "latest",
@@ -20,4 +20,5 @@
     "postcss": "latest",
     "tailwindcss": "latest",
     "typescript": "latest"
+  }
 }
