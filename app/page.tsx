@@ -68,7 +68,7 @@ export default function CollegeFlowWebsite() {
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
-  const formLink = "https://forms.gle/XX7SJwpDKirehnDd9";
+  const formLink = "https://forms.gle/tvjF2eEtNLTL3frU6";
   const contactEmail = "collegeflowteam@gmail.com";
 
   const [studentName, setStudentName] = useState("");
@@ -326,7 +326,7 @@ export default function CollegeFlowWebsite() {
     );
   }
 
-  const AuthLayout = ({ mode }: { mode: "signup" | "login" }) => (
+  const renderAuthLayout = (mode: "signup" | "login") => (
     <div className="min-h-screen bg-slate-50 px-6 py-12 text-slate-900 lg:px-8">
       <div className="mx-auto max-w-5xl overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white shadow-xl shadow-slate-200/60 lg:grid lg:grid-cols-[1fr,0.9fr]">
         <div className="p-8 lg:p-12">
@@ -412,7 +412,7 @@ export default function CollegeFlowWebsite() {
     </div>
   );
 
-  const DashboardLayout = () => (
+  const renderDashboardLayout = () => (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
@@ -680,9 +680,9 @@ export default function CollegeFlowWebsite() {
     </div>
   );
 
-  if (view === "signup") return <AuthLayout mode="signup" />;
-  if (view === "login") return <AuthLayout mode="login" />;
-  if (view === "dashboard") return <DashboardLayout />;
+  if (view === "signup") return renderAuthLayout("signup");
+  if (view === "login") return renderAuthLayout("login");
+  if (view === "dashboard") return renderDashboardLayout();
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
