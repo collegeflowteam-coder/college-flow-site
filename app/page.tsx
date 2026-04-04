@@ -1,4 +1,11 @@
-import { useMemo, useState } from "react";
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { createClient, type Session } from "@supabase/supabase-js";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 type Match = {
   school: string;
@@ -10,66 +17,16 @@ type Match = {
 type View = "home" | "signup" | "login" | "dashboard";
 type DashboardTab = "overview" | "profile" | "status" | "matches" | "upgrade";
 
-type NavLinkProps = {
-  href: string;
-  children: React.ReactNode;
+type PackagePlan = {
+  name: string;
+  price: string;
+  subtitle: string;
+  features: string[];
+  cta: string;
+  highlight: boolean;
 };
 
-type DashboardNavButtonProps = {
-  value: DashboardTab;
-  label: string;
-  activeTab: DashboardTab;
-  onSelect: (tab: DashboardTab) => void;
-};
-
-type AuthCardProps = {
-  mode: "signup" | "login";
-  studentName: string;
-  studentEmail: string;
-  setStudentName: (value: string) => void;
-  setStudentEmail: (value: string) => void;
-  onBack: () => void;
-  onPrimary: () => void;
-  onSwapMode: () => void;
-  primaryButton: string;
-  secondaryButton: string;
-};
-
-type DashboardShellProps = {
-  studentName: string;
-  studentEmail: string;
-  major: string;
-  budget: string;
-  locations: string;
-  goal: string;
-  plan: string;
-  status: string;
-  matches: Match[];
-  packages: {
-    name: string;
-    price: string;
-    subtitle: string;
-    features: string[];
-    cta: string;
-    highlight: boolean;
-  }[];
-  tab: DashboardTab;
-  setTab: (tab: DashboardTab) => void;
-  setView: (view: View) => void;
-  setStudentName: (value: string) => void;
-  setStudentEmail: (value: string) => void;
-  setMajor: (value: string) => void;
-  setBudget: (value: string) => void;
-  setLocations: (value: string) => void;
-  setGoal: (value: string) => void;
-  setPlan: (value: string) => void;
-  setStatus: (value: string) => void;
-  formLink: string;
-  primaryButton: string;
-  secondaryButton: string;
-};
-
-function NavLink({ href, children }: NavLinkProps) {
+function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
     <a href={href} className="text-sm text-slate-600 transition hover:text-slate-900">
       {children}
@@ -77,7 +34,17 @@ function NavLink({ href, children }: NavLinkProps) {
   );
 }
 
-function DashboardNavButton({ value, label, activeTab, onSelect }: DashboardNavButtonProps) {
+function DashboardNavButton({
+  value,
+  label,
+  activeTab,
+  onSelect,
+}: {
+  value: DashboardTab;
+  label: string;
+  activeTab: DashboardTab;
+  onSelect: (tab: DashboardTab) => void;
+}) {
   const active = activeTab === value;
 
   return (
@@ -92,23 +59,278 @@ function DashboardNavButton({ value, label, activeTab, onSelect }: DashboardNavB
   );
 }
 
-function AuthCard({
-  mode,
-  studentName,
-  studentEmail,
-  setStudentName,
-  setStudentEmail,
-  onBack,
-  onPrimary,
-  onSwapMode,
-  primaryButton,
-  secondaryButton,
-}: AuthCardProps) {
-  return (
+export default function CollegeFlowWebsite() {
+  const [view, setView] = useState<View>("home");
+  const [tab, setTab] = useState<DashboardTab>("overview");
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+
+  const formLink = "https://forms.gle/XX7SJwpDKirehnDd9";
+  const contactEmail = "collegeflowteam@gmail.com";
+
+  const [studentName, setStudentName] = useState("");
+  const [studentEmail, setStudentEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [major, setMajor] = useState("Business");
+  const [budget, setBudget] = useState("Under $30,000 per year");
+  const [locations, setLocations] = useState("Arizona, Nevada, California");
+  const [goal, setGoal] = useState(
+    "Find a college with strong business opportunities, social life, and good long-term value."
+  );
+  const [plan, setPlan] = useState("Free");
+  const [status, setStatus] = useState("Form not submitted");
+
+  const matches: Match[] = useMemo(
+    () => [
+      {
+        school: "Arizona State University",
+        fit: "89% fit",
+        type: "Target / Strong Fit",
+        note: "Large campus, strong business pathways, warm weather, and broad student life opportunities.",
+      },
+      {
+        school: "University of Arizona",
+        fit: "91% fit",
+        type: "Target / Strong Fit",
+        note: "Great social scene, warm climate, and a strong big-school experience with wide academic options.",
+      },
+      {
+        school: "University of Nevada, Reno",
+        fit: "87% fit",
+        type: "Value / Close-to-Home Option",
+        note: "More affordable, flexible, and practical if cost and location both matter in your decision.",
+      },
+    ],
+    []
+  );
+
+  const packages: PackagePlan[] = [
+    {
+      name: "Free",
+      price: "$0",
+      subtitle: "Start here",
+      features: [
+        "Account + student dashboard",
+        "Complete College Flow intake form",
+        "Track your submission status",
+        "Starter college recommendations preview",
+      ],
+      cta: "Start Free",
+      highlight: false,
+    },
+    {
+      name: "Starter",
+      price: "$19/mo",
+      subtitle: "Best for most students",
+      features: [
+        "Full personalized match list",
+        "Deeper school-fit explanations",
+        "Saved dashboard results",
+        "Priority review turnaround",
+      ],
+      cta: "Unlock Starter",
+      highlight: true,
+    },
+    {
+      name: "Premium",
+      price: "$49/mo",
+      subtitle: "Full guidance experience",
+      features: [
+        "Detailed personalized recommendations",
+        "Comparison notes between top schools",
+        "More strategy and next-step support",
+        "Future AI counselor access",
+      ],
+      cta: "Go Premium",
+      highlight: false,
+    },
+  ];
+
+  const faqs = [
+    {
+      q: "Do I need an account to use College Flow?",
+      a: "Creating an account gives students a personal dashboard where they can track form status, view recommendations, and manage future upgrades.",
+    },
+    {
+      q: "Does College Flow guarantee admission?",
+      a: "No. College Flow is designed to help students make stronger, more informed college choices based on fit, affordability, and long-term goals.",
+    },
+    {
+      q: "Is the AI counselor already live?",
+      a: "The AI counselor is a planned premium feature. Right now, College Flow focuses on personalized guidance, dashboard access, and strong fit-based recommendations.",
+    },
+    {
+      q: "Can parents use College Flow too?",
+      a: "Yes. Parents can use College Flow to understand cost, fit, and better compare school options with their student.",
+    },
+  ];
+
+  useEffect(() => {
+    const loadSession = async () => {
+      const {
+        data: { session: currentSession },
+      } = await supabase.auth.getSession();
+
+      setSession(currentSession);
+      if (currentSession?.user?.email) {
+        setStudentEmail(currentSession.user.email);
+        const derivedName = currentSession.user.email.split("@")[0];
+        setStudentName(derivedName.charAt(0).toUpperCase() + derivedName.slice(1));
+        setView("dashboard");
+      }
+      setLoading(false);
+    };
+
+    loadSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      if (nextSession?.user?.email) {
+        setStudentEmail(nextSession.user.email);
+        const derivedName = nextSession.user.email.split("@")[0];
+        setStudentName((prev) => prev || derivedName.charAt(0).toUpperCase() + derivedName.slice(1));
+        setView("dashboard");
+      } else {
+        setView("home");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const clearMessages = () => {
+    setErrorMessage("");
+    setSuccessMessage("");
+  };
+
+  const handleSignup = async () => {
+    clearMessages();
+
+    if (!studentName.trim()) {
+      setErrorMessage("Please enter your full name.");
+      return;
+    }
+    if (!studentEmail.trim()) {
+      setErrorMessage("Please enter your email.");
+      return;
+    }
+    if (password.length < 6) {
+      setErrorMessage("Please create a password with at least 6 characters.");
+      return;
+    }
+
+    setAuthLoading(true);
+
+    const { error } = await supabase.auth.signUp({
+      email: studentEmail,
+      password,
+      options: {
+        data: {
+          full_name: studentName,
+        },
+      },
+    });
+
+    setAuthLoading(false);
+
+    if (error) {
+      setErrorMessage(error.message);
+      return;
+    }
+
+    setSuccessMessage("Account created. Check your email to confirm your signup if prompted.");
+    setStatus("Account created");
+    setPassword("");
+    setView("dashboard");
+  };
+
+  const handleLogin = async () => {
+    clearMessages();
+
+    if (!studentEmail.trim()) {
+      setErrorMessage("Please enter your email.");
+      return;
+    }
+    if (!password.trim()) {
+      setErrorMessage("Please enter your password.");
+      return;
+    }
+
+    setAuthLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: studentEmail,
+      password,
+    });
+    setAuthLoading(false);
+
+    if (error) {
+      setErrorMessage(error.message);
+      return;
+    }
+
+    setSuccessMessage("Logged in successfully.");
+    if (status === "Form not submitted") setStatus("Account created");
+    setPassword("");
+    setView("dashboard");
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setSession(null);
+    setPassword("");
+    setStudentEmail("");
+    setView("home");
+    setSuccessMessage("Logged out successfully.");
+  };
+
+  const openMatchForm = () => {
+    clearMessages();
+    if (status === "Account created" || status === "Form not submitted") {
+      setStatus("Form submitted");
+    }
+    setTab("status");
+  };
+
+  const primaryButton =
+    "rounded-2xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60";
+  const secondaryButton =
+    "rounded-2xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50";
+
+  const statusStages = ["Account created", "Form submitted", "Review in progress", "Matches ready"];
+
+  const stageIsActive = (item: string) => {
+    if (item === "Account created") {
+      return ["Account created", "Form submitted", "Review in progress", "Matches ready"].includes(status);
+    }
+    if (item === "Form submitted") {
+      return ["Form submitted", "Review in progress", "Matches ready"].includes(status);
+    }
+    if (item === "Review in progress") {
+      return ["Review in progress", "Matches ready"].includes(status);
+    }
+    return status === "Matches ready";
+  };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-900">
+        <div className="rounded-3xl border border-slate-200 bg-white px-8 py-6 shadow-sm">
+          Loading College Flow...
+        </div>
+      </div>
+    );
+  }
+
+  const AuthLayout = ({ mode }: { mode: "signup" | "login" }) => (
     <div className="min-h-screen bg-slate-50 px-6 py-12 text-slate-900 lg:px-8">
       <div className="mx-auto max-w-5xl overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white shadow-xl shadow-slate-200/60 lg:grid lg:grid-cols-[1fr,0.9fr]">
         <div className="p-8 lg:p-12">
-          <button onClick={onBack} className="mb-8 text-sm font-medium text-slate-500 hover:text-slate-900">
+          <button onClick={() => setView("home")} className="mb-8 text-sm font-medium text-slate-500 hover:text-slate-900">
             ← Back to site
           </button>
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">College Flow</p>
@@ -120,6 +342,9 @@ function AuthCard({
               ? "Start building a personal dashboard where you can track your form status, recommendations, and future upgrades."
               : "Access your College Flow dashboard to review your status, profile, and personalized college recommendations."}
           </p>
+
+          {errorMessage && <div className="mt-6 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">{errorMessage}</div>}
+          {successMessage && <div className="mt-6 rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{successMessage}</div>}
 
           <div className="mt-8 grid gap-4">
             {mode === "signup" && (
@@ -146,17 +371,29 @@ function AuthCard({
               <label className="mb-2 block text-sm font-medium text-slate-700">Password</label>
               <input
                 type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900"
-                placeholder="Create a password"
+                placeholder={mode === "signup" ? "Create a password" : "Enter your password"}
               />
             </div>
           </div>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <button onClick={onPrimary} className={primaryButton}>
-              {mode === "signup" ? "Create Account" : "Log In"}
+            <button
+              onClick={mode === "signup" ? handleSignup : handleLogin}
+              disabled={authLoading}
+              className={primaryButton}
+            >
+              {authLoading ? "Please wait..." : mode === "signup" ? "Create Account" : "Log In"}
             </button>
-            <button onClick={onSwapMode} className={secondaryButton}>
+            <button
+              onClick={() => {
+                clearMessages();
+                setView(mode === "signup" ? "login" : "signup");
+              }}
+              className={secondaryButton}
+            >
               {mode === "signup" ? "Already have an account?" : "Need to create an account?"}
             </button>
           </div>
@@ -174,57 +411,8 @@ function AuthCard({
       </div>
     </div>
   );
-}
 
-function DashboardShell({
-  studentName,
-  studentEmail,
-  major,
-  budget,
-  locations,
-  goal,
-  plan,
-  status,
-  matches,
-  packages,
-  tab,
-  setTab,
-  setView,
-  setStudentName,
-  setStudentEmail,
-  setMajor,
-  setBudget,
-  setLocations,
-  setGoal,
-  setPlan,
-  setStatus,
-  formLink,
-  primaryButton,
-  secondaryButton,
-}: DashboardShellProps) {
-  const statusStages = ["Account created", "Form submitted", "Review in progress", "Matches ready"];
-
-  const stageIsActive = (item: string) => {
-    if (item === "Account created") {
-      return ["Account created", "Form submitted", "Review in progress", "Matches ready"].includes(status);
-    }
-    if (item === "Form submitted") {
-      return ["Form submitted", "Review in progress", "Matches ready"].includes(status);
-    }
-    if (item === "Review in progress") {
-      return ["Review in progress", "Matches ready"].includes(status);
-    }
-    return status === "Matches ready";
-  };
-
-  const handleFormOpen = () => {
-    if (status === "Account created" || status === "Form not submitted") {
-      setStatus("Form submitted");
-    }
-    setTab("status");
-  };
-
-  return (
+  const DashboardLayout = () => (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
@@ -240,14 +428,11 @@ function DashboardShell({
 
           <div className="flex items-center gap-3">
             <div className="hidden text-right sm:block">
-              <p className="text-sm font-semibold text-slate-900">{studentName || "Student"}</p>
+              <p className="text-sm font-semibold text-slate-900">{studentName || session?.user?.email?.split("@")[0] || "Student"}</p>
               <p className="text-xs text-slate-500">{plan} Plan</p>
             </div>
-            <button
-              onClick={() => setView("home")}
-              className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-            >
-              Back to Site
+            <button onClick={handleLogout} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+              Log Out
             </button>
           </div>
         </div>
@@ -257,7 +442,7 @@ function DashboardShell({
         <aside className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm">
           <div className="mb-4 rounded-[1.5rem] bg-slate-900 p-5 text-white">
             <p className="text-xs uppercase tracking-[0.2em] text-slate-300">Welcome back</p>
-            <h2 className="mt-2 text-2xl font-bold">{studentName || "Student"}</h2>
+            <h2 className="mt-2 text-2xl font-bold">{studentName || session?.user?.email?.split("@")[0] || "Student"}</h2>
             <p className="mt-1 text-sm text-slate-300">Track your progress, recommendations, and next steps.</p>
           </div>
 
@@ -271,6 +456,8 @@ function DashboardShell({
         </aside>
 
         <section className="space-y-6">
+          {successMessage && <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{successMessage}</div>}
+
           {tab === "overview" && (
             <>
               <div className="grid gap-4 md:grid-cols-3">
@@ -306,13 +493,7 @@ function DashboardShell({
                     Your dashboard is now personalized around your profile. The next step is submitting the College Flow form so your recommendations can move into review and then into your dashboard.
                   </p>
                   <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                    <a
-                      href={formLink}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={handleFormOpen}
-                      className={primaryButton}
-                    >
+                    <a href={formLink} target="_blank" rel="noreferrer" onClick={openMatchForm} className={primaryButton}>
                       Complete Match Form
                     </a>
                     <button onClick={() => setTab("profile")} className={secondaryButton}>
@@ -350,67 +531,35 @@ function DashboardShell({
               <div className="mt-6 grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">Full name</label>
-                  <input
-                    value={studentName}
-                    onChange={(e) => setStudentName(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900"
-                  />
+                  <input value={studentName} onChange={(e) => setStudentName(e.target.value)} className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900" />
                 </div>
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">Email</label>
-                  <input
-                    value={studentEmail}
-                    onChange={(e) => setStudentEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900"
-                  />
+                  <input value={studentEmail} onChange={(e) => setStudentEmail(e.target.value)} className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900" />
                 </div>
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">Intended major</label>
-                  <input
-                    value={major}
-                    onChange={(e) => setMajor(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900"
-                  />
+                  <input value={major} onChange={(e) => setMajor(e.target.value)} className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900" />
                 </div>
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">Budget</label>
-                  <input
-                    value={budget}
-                    onChange={(e) => setBudget(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900"
-                  />
+                  <input value={budget} onChange={(e) => setBudget(e.target.value)} className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900" />
                 </div>
                 <div className="md:col-span-2">
                   <label className="mb-2 block text-sm font-medium text-slate-700">Preferred locations</label>
-                  <input
-                    value={locations}
-                    onChange={(e) => setLocations(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900"
-                  />
+                  <input value={locations} onChange={(e) => setLocations(e.target.value)} className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900" />
                 </div>
                 <div className="md:col-span-2">
                   <label className="mb-2 block text-sm font-medium text-slate-700">Goals</label>
-                  <textarea
-                    value={goal}
-                    onChange={(e) => setGoal(e.target.value)}
-                    rows={4}
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900"
-                  />
+                  <textarea value={goal} onChange={(e) => setGoal(e.target.value)} rows={4} className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900" />
                 </div>
               </div>
 
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                <button onClick={() => setTab("overview")} className={primaryButton}>
+                <button onClick={() => setSuccessMessage("Profile updated in the dashboard view.")} className={primaryButton}>
                   Save Profile
                 </button>
-                <a
-                  href={formLink}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={handleFormOpen}
-                  className={secondaryButton}
-                >
+                <a href={formLink} target="_blank" rel="noreferrer" onClick={openMatchForm} className={secondaryButton}>
                   Open Match Form
                 </a>
               </div>
@@ -443,13 +592,7 @@ function DashboardShell({
                   Once your form is submitted, College Flow can move your profile into review and prepare your first personalized school list.
                 </p>
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                  <a
-                    href={formLink}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={handleFormOpen}
-                    className={primaryButton}
-                  >
+                  <a href={formLink} target="_blank" rel="noreferrer" onClick={openMatchForm} className={primaryButton}>
                     Submit / Reopen Match Form
                   </a>
                   <button onClick={() => setStatus("Matches ready")} className={secondaryButton}>
@@ -507,18 +650,14 @@ function DashboardShell({
 
               <div className="grid gap-6 lg:grid-cols-3">
                 {packages.map((pkg) => (
-                  <div
-                    key={pkg.name}
-                    className={`rounded-[2rem] border p-8 shadow-sm ${
-                      pkg.highlight
-                        ? "border-slate-900 bg-slate-900 text-white shadow-xl"
-                        : "border-slate-200 bg-white text-slate-900"
-                    }`}
-                  >
-                    <p className="text-xl font-semibold">{pkg.name}</p>
-                    <p className={`mt-1 text-sm ${pkg.highlight ? "text-slate-300" : "text-slate-500"}`}>
-                      {pkg.subtitle}
-                    </p>
+                  <div key={pkg.name} className={`rounded-[2rem] border p-8 shadow-sm ${pkg.highlight ? "border-slate-900 bg-slate-900 text-white shadow-xl" : "border-slate-200 bg-white text-slate-900"}`}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xl font-semibold">{pkg.name}</p>
+                        <p className={`mt-1 text-sm ${pkg.highlight ? "text-slate-300" : "text-slate-500"}`}>{pkg.subtitle}</p>
+                      </div>
+                      {pkg.highlight && <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white">Most Popular</span>}
+                    </div>
                     <p className="mt-6 text-4xl font-bold">{pkg.price}</p>
                     <ul className="mt-6 space-y-3 text-sm">
                       {pkg.features.map((feature) => (
@@ -528,14 +667,7 @@ function DashboardShell({
                         </li>
                       ))}
                     </ul>
-                    <button
-                      onClick={() => setPlan(pkg.name)}
-                      className={`mt-8 w-full rounded-2xl px-4 py-3 text-sm font-semibold transition ${
-                        pkg.highlight
-                          ? "bg-white text-slate-900 hover:bg-slate-100"
-                          : "bg-slate-900 text-white hover:opacity-90"
-                      }`}
-                    >
+                    <button onClick={() => setPlan(pkg.name)} className={`mt-8 w-full rounded-2xl px-4 py-3 text-sm font-semibold transition ${pkg.highlight ? "bg-white text-slate-900 hover:bg-slate-100" : "bg-slate-900 text-white hover:opacity-90"}`}>
                       {pkg.name === plan ? "Current Plan" : pkg.cta}
                     </button>
                   </div>
@@ -547,112 +679,315 @@ function DashboardShell({
       </main>
     </div>
   );
-}
 
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL as string,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
-);
-
-export default function CollegeFlowWebsite() {
-  const [view, setView] = useState<View>("home");
-  const [tab, setTab] = useState<DashboardTab>("overview");
-
-  const formLink = "https://forms.gle/Gc7tm9yBr7HkPZyp9";
-  const contactEmail = "collegeflowteam@gmail.com";
-
-  const [studentName, setStudentName] = useState("");
-  const [studentEmail, setStudentEmail] = useState("");
-  const [password, setPassword] = useState("");
-
-  const [major, setMajor] = useState("");
-  const [budget, setBudget] = useState("");
-  const [locations, setLocations] = useState("");
-  const [goal, setGoal] = useState("");
-  const [plan, setPlan] = useState("Free");
-  const [status, setStatus] = useState("Form not submitted");
-
-  const handleSignup = async () => {
-    if (!studentEmail || !password) return alert("Enter email + password");
-
-    const { error } = await supabase.auth.signUp({
-      email: studentEmail,
-      password,
-    });
-
-    if (error) return alert(error.message);
-
-    alert("Account created! Check your email to confirm.");
-    setView("dashboard");
-  };
-
-  const handleLogin = async () => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email: studentEmail,
-      password,
-    });
-
-    if (error) return alert(error.message);
-
-    setView("dashboard");
-  };
-
-  if (view === "signup") {
-    return (
-      <div className="p-10">
-        <h1>Create Account</h1>
-        <input
-          placeholder="Name"
-          value={studentName}
-          onChange={(e) => setStudentName(e.target.value)}
-        />
-        <input
-          placeholder="Email"
-          value={studentEmail}
-          onChange={(e) => setStudentEmail(e.target.value)}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <button onClick={handleSignup}>Sign Up</button>
-      </div>
-    );
-  }
-
-  if (view === "login") {
-    return (
-      <div className="p-10">
-        <h1>Login</h1>
-        <input
-          placeholder="Email"
-          value={studentEmail}
-          onChange={(e) => setStudentEmail(e.target.value)}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <button onClick={handleLogin}>Login</button>
-      </div>
-    );
-  }
-
-  if (view === "dashboard") {
-    return <div className="p-10">Dashboard (connected to real auth now 🔥)</div>;
-  }
+  if (view === "signup") return <AuthLayout mode="signup" />;
+  if (view === "login") return <AuthLayout mode="login" />;
+  if (view === "dashboard") return <DashboardLayout />;
 
   return (
-    <div className="p-10">
-      <h1>College Flow</h1>
-      <button onClick={() => setView("signup")}>Sign Up</button>
-      <button onClick={() => setView("login")}>Login</button>
+    <div className="min-h-screen bg-white text-slate-900">
+      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-sm font-bold text-white shadow-sm">CF</div>
+            <div>
+              <p className="text-sm font-semibold tracking-wide text-slate-900">College Flow</p>
+              <p className="text-xs text-slate-500">Personalized college guidance</p>
+            </div>
+          </div>
+
+          <nav className="hidden items-center gap-8 md:flex">
+            <NavLink href="#how-it-works">How It Works</NavLink>
+            <NavLink href="#results">Results</NavLink>
+            <NavLink href="#pricing">Pricing</NavLink>
+            <NavLink href="#about">About</NavLink>
+            <NavLink href="#faq">FAQ</NavLink>
+            <NavLink href="#contact">Contact</NavLink>
+          </nav>
+
+          <div className="flex items-center gap-3">
+            <button onClick={() => setView("login")} className="hidden rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 md:inline-flex">
+              Log In
+            </button>
+            <button onClick={() => setView("signup")} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:opacity-90">
+              Create Account
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        <section className="relative overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.10),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.10),transparent_35%)]" />
+          <div className="relative mx-auto grid max-w-7xl items-center gap-14 px-6 py-16 lg:grid-cols-2 lg:px-8 lg:py-24">
+            <div>
+              <div className="mb-5 inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 shadow-sm">
+                Built for students who want fit, clarity, and confidence
+              </div>
+              <h1 className="max-w-2xl text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
+                Find colleges that actually fit you.
+              </h1>
+              <p className="mt-6 max-w-xl text-lg leading-8 text-slate-600">
+                College Flow helps students discover schools based on budget, major, goals, location, and lifestyle — then gives them a real dashboard to track next steps, recommendations, and future counselor support.
+              </p>
+              <div className="mt-8 flex flex-col gap-4 sm:flex-row">
+                <button onClick={() => setView("signup")} className="rounded-2xl bg-slate-900 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-slate-200 transition hover:-translate-y-0.5 hover:opacity-95">
+                  Create My Account
+                </button>
+                <a href="#how-it-works" className="rounded-2xl border border-slate-300 px-6 py-3 text-base font-semibold text-slate-700 transition hover:bg-slate-50">
+                  See How It Works
+                </a>
+              </div>
+              <div className="mt-8 flex flex-wrap gap-6 text-sm text-slate-500">
+                <div>✓ Real student dashboard</div>
+                <div>✓ Free to start</div>
+                <div>✓ Google Form intake for now</div>
+              </div>
+            </div>
+
+            <div className="relative">
+              <div className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-2xl shadow-slate-200/70">
+                <div className="rounded-[1.5rem] bg-slate-50 p-4">
+                  <div className="mb-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">Student Dashboard</p>
+                      <p className="text-xs text-slate-500">Welcome back, {studentName || "Student"}</p>
+                    </div>
+                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">{plan} Plan</span>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="rounded-2xl bg-white p-4 shadow-sm">
+                      <p className="text-xs uppercase tracking-wide text-slate-500">Profile</p>
+                      <p className="mt-2 text-2xl font-bold">Personal</p>
+                      <p className="mt-2 text-sm text-slate-500">Each student gets their own account, status, and results.</p>
+                    </div>
+                    <div className="rounded-2xl bg-white p-4 shadow-sm">
+                      <p className="text-xs uppercase tracking-wide text-slate-500">Current status</p>
+                      <p className="mt-2 text-2xl font-bold">{status}</p>
+                      <p className="mt-2 text-sm text-slate-500">A real product feel even before full automation.</p>
+                    </div>
+                    <div className="rounded-2xl bg-white p-4 shadow-sm">
+                      <p className="text-xs uppercase tracking-wide text-slate-500">Future AI</p>
+                      <p className="mt-2 text-2xl font-bold">Ready</p>
+                      <p className="mt-2 text-sm text-slate-500">The counselor can plug into this dashboard later.</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-4 lg:grid-cols-[1.2fr,0.8fr]">
+                    <div className="rounded-2xl bg-white p-4 shadow-sm">
+                      <div className="mb-3 flex items-center justify-between">
+                        <p className="font-semibold text-slate-900">Top college matches</p>
+                        <button onClick={() => setView("dashboard")} className="text-sm font-medium text-slate-500">Open dashboard</button>
+                      </div>
+                      <div className="space-y-3">
+                        {matches.map((item) => (
+                          <div key={item.school} className="rounded-2xl border border-slate-100 p-4">
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <p className="font-semibold text-slate-900">{item.school}</p>
+                                <p className="mt-1 text-sm text-slate-500">{item.note}</p>
+                              </div>
+                              <span className="whitespace-nowrap rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">{item.fit}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl bg-slate-900 p-4 text-white shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <p className="font-semibold">Next phase</p>
+                        <span className="rounded-full bg-white/10 px-3 py-1 text-xs">Phase 2</span>
+                      </div>
+                      <div className="mt-4 space-y-3 text-sm">
+                        <div className="rounded-2xl bg-white/10 p-3">Accounts make the experience feel personal before AI is fully live.</div>
+                        <div className="rounded-2xl bg-white p-3 text-slate-900">Students can log in, see their own profile, track form status, and later view recommendations in one place.</div>
+                      </div>
+                      <button onClick={() => setView("signup")} className="mt-4 w-full rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100">
+                        Build My Account
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="how-it-works" className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
+          <div className="max-w-2xl">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">How it works</p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">A smarter and more personal college flow.</h2>
+            <p className="mt-4 text-lg text-slate-600">Students can create an account, complete the intake form, and track where they are in the recommendation process.</p>
+          </div>
+
+          <div className="mt-10 grid gap-6 md:grid-cols-3">
+            {[
+              { title: "Create your account", text: "Students get a personal dashboard instead of a one-time form experience." },
+              { title: "Complete the match intake", text: "The Google Form still powers intake for now, but the site feels like a real platform." },
+              { title: "Track recommendations", text: "Recommendation status, results, and future upgrades all live inside the dashboard." },
+            ].map((step, index) => (
+              <div key={step.title} className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-lg font-bold text-white">{index + 1}</div>
+                <h3 className="mt-6 text-xl font-semibold text-slate-900">{step.title}</h3>
+                <p className="mt-3 leading-7 text-slate-600">{step.text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section id="results" className="bg-slate-50 py-16">
+          <div className="mx-auto max-w-7xl px-6 lg:px-8">
+            <div className="max-w-2xl">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">What students get</p>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">A real product feel, even before full automation.</h2>
+            </div>
+            <div className="mt-10 grid gap-6 lg:grid-cols-3">
+              {[
+                { title: "Personal dashboard", text: "Each student gets a place to view their status, profile, and results." },
+                { title: "Human-powered recommendations", text: "You can still manually create strong recommendations behind the scenes for now." },
+                { title: "Scalable future", text: "Stripe, saved data, and AI counselor can plug into this structure next." },
+              ].map((card) => (
+                <div key={card.title} className="rounded-[2rem] bg-white p-8 shadow-sm">
+                  <h3 className="text-xl font-semibold text-slate-900">{card.title}</h3>
+                  <p className="mt-3 leading-7 text-slate-600">{card.text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="pricing" className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Pricing</p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Plans designed to grow with the platform.</h2>
+          </div>
+          <div className="mt-12 grid gap-6 lg:grid-cols-3">
+            {packages.map((pkg) => (
+              <div key={pkg.name} className={`rounded-[2rem] border p-8 shadow-sm ${pkg.highlight ? "border-slate-900 bg-slate-900 text-white shadow-xl" : "border-slate-200 bg-white text-slate-900"}`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xl font-semibold">{pkg.name}</p>
+                    <p className={`mt-1 text-sm ${pkg.highlight ? "text-slate-300" : "text-slate-500"}`}>{pkg.subtitle}</p>
+                  </div>
+                  {pkg.highlight && <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white">Most Popular</span>}
+                </div>
+                <p className="mt-6 text-4xl font-bold">{pkg.price}</p>
+                <ul className="mt-6 space-y-3 text-sm">
+                  {pkg.features.map((feature) => (
+                    <li key={feature} className="flex gap-3">
+                      <span>✓</span>
+                      <span className={pkg.highlight ? "text-slate-200" : "text-slate-600"}>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <button onClick={() => setView("signup")} className={`mt-8 w-full rounded-2xl px-4 py-3 text-sm font-semibold transition ${pkg.highlight ? "bg-white text-slate-900 hover:bg-slate-100" : "bg-slate-900 text-white hover:opacity-90"}`}>
+                  {pkg.cta}
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section id="about" className="bg-slate-50 py-16">
+          <div className="mx-auto grid max-w-7xl gap-10 px-6 lg:grid-cols-[1fr,1fr] lg:px-8">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Why College Flow</p>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Built to feel premium before it is fully automated.</h2>
+              <p className="mt-4 text-lg leading-8 text-slate-600">College Flow can already feel personal because each student gets their own dashboard, their own status, and their own recommendations — even while you are still powering the recommendation engine manually.</p>
+            </div>
+            <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
+              <div className="space-y-4 text-slate-600">
+                <div className="rounded-2xl border border-slate-100 p-4"><p className="font-semibold text-slate-900">Personal account experience</p><p className="mt-1 text-sm">Students are not just filling out a form. They are entering a platform built around them.</p></div>
+                <div className="rounded-2xl border border-slate-100 p-4"><p className="font-semibold text-slate-900">Manual now, scalable later</p><p className="mt-1 text-sm">You can handle personalized school recommendations first, then layer in AI and automation later.</p></div>
+                <div className="rounded-2xl border border-slate-100 p-4"><p className="font-semibold text-slate-900">Better business foundation</p><p className="mt-1 text-sm">This gives you a stronger product base for Stripe, saved results, and future premium features.</p></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="faq" className="mx-auto max-w-5xl px-6 py-16 lg:px-8">
+          <div className="text-center">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">FAQ</p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Questions students and parents might ask</h2>
+          </div>
+          <div className="mt-10 space-y-4">
+            {faqs.map((faq) => (
+              <div key={faq.q} className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-slate-900">{faq.q}</h3>
+                <p className="mt-2 leading-7 text-slate-600">{faq.a}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section id="contact" className="bg-slate-50 py-16">
+          <div className="mx-auto grid max-w-7xl gap-8 px-6 lg:grid-cols-[1.1fr,0.9fr] lg:px-8">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Contact</p>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Want to see the full experience?</h2>
+              <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-600">Create an account, open the match intake, and start using the dashboard experience now. Stripe and AI counselor features can be layered onto this next.</p>
+              <div className="mt-8 flex flex-col gap-4 sm:flex-row">
+                <a href={`mailto:${contactEmail}`} className="rounded-2xl bg-slate-900 px-6 py-3 text-center text-sm font-semibold text-white transition hover:opacity-90">Email College Flow</a>
+                <button onClick={() => setView("signup")} className="rounded-2xl border border-slate-300 px-6 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-100">Create My Account</button>
+              </div>
+            </div>
+
+            <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
+              <p className="text-sm font-semibold text-slate-500">What Phase 2 unlocks</p>
+              <div className="mt-6 space-y-4 text-sm text-slate-600">
+                <div className="rounded-2xl border border-slate-100 p-4"><p className="font-semibold text-slate-900">Real user flow</p><p className="mt-1">Landing page → account → dashboard → form → recommendation status.</p></div>
+                <div className="rounded-2xl border border-slate-100 p-4"><p className="font-semibold text-slate-900">Better trust</p><p className="mt-1">Students feel like they are using a real product instead of just clicking into a form.</p></div>
+                <div className="rounded-2xl border border-slate-100 p-4"><p className="font-semibold text-slate-900">Future paid features</p><p className="mt-1">This makes it much easier to add Stripe and AI counselor functionality later.</p></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="border-t border-slate-200 bg-white">
+        <div className="mx-auto grid max-w-7xl gap-10 px-6 py-10 lg:grid-cols-[1.2fr,0.8fr,0.8fr,0.8fr] lg:px-8">
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-sm font-bold text-white">CF</div>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">College Flow</p>
+                <p className="text-xs text-slate-500">College guidance made more personal</p>
+              </div>
+            </div>
+            <p className="mt-4 max-w-sm text-sm leading-6 text-slate-500">Built to help students choose colleges based on real fit factors like goals, cost, location, and lifestyle.</p>
+          </div>
+
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Product</p>
+            <div className="mt-4 space-y-3 text-sm text-slate-500">
+              <a href="#how-it-works" className="block hover:text-slate-900">How It Works</a>
+              <a href="#pricing" className="block hover:text-slate-900">Pricing</a>
+              <a href="#results" className="block hover:text-slate-900">Results</a>
+              <a href="#faq" className="block hover:text-slate-900">FAQ</a>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Company</p>
+            <div className="mt-4 space-y-3 text-sm text-slate-500">
+              <a href="#about" className="block hover:text-slate-900">About</a>
+              <a href="#contact" className="block hover:text-slate-900">Contact</a>
+              <a href={`mailto:${contactEmail}`} className="block hover:text-slate-900">Email</a>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Account</p>
+            <div className="mt-4 space-y-3 text-sm text-slate-500">
+              <button onClick={() => setView("signup")} className="block hover:text-slate-900">Create Account</button>
+              <button onClick={() => setView("login")} className="block hover:text-slate-900">Log In</button>
+              <button onClick={() => setView("dashboard")} className="block hover:text-slate-900">Dashboard Demo</button>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
