@@ -8,6 +8,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 type Match = {
+  id?: string;
   school: string;
   fit: string;
   type: string;
@@ -24,6 +25,18 @@ type PackagePlan = {
   features: string[];
   cta: string;
   highlight: boolean;
+};
+
+type ProfileRow = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  major: string | null;
+  budget: string | null;
+  locations: string | null;
+  goal: string | null;
+  plan: string | null;
+  status: string | null;
 };
 
 function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
@@ -65,10 +78,12 @@ export default function CollegeFlowWebsite() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [authLoading, setAuthLoading] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
-  const formLink = "https://forms.gle/tvjF2eEtNLTL3frU6";
+  const formLink = "https://forms.gle/XeaKexnq4jKsZPLH6";
   const contactEmail = "collegeflowteam@gmail.com";
 
   const [studentName, setStudentName] = useState("");
@@ -82,8 +97,9 @@ export default function CollegeFlowWebsite() {
   );
   const [plan, setPlan] = useState("Free");
   const [status, setStatus] = useState("Form not submitted");
+  const [realMatches, setRealMatches] = useState<Match[]>([]);
 
-  const matches: Match[] = useMemo(
+  const sampleMatches: Match[] = useMemo(
     () => [
       {
         school: "Arizona State University",
@@ -106,6 +122,8 @@ export default function CollegeFlowWebsite() {
     ],
     []
   );
+
+  const displayedMatches = realMatches.length > 0 ? realMatches : sampleMatches;
 
   const packages: PackagePlan[] = [
     {
@@ -168,6 +186,60 @@ export default function CollegeFlowWebsite() {
     },
   ];
 
+  const clearMessages = () => {
+    setErrorMessage("");
+    setSuccessMessage("");
+  };
+
+  const hydrateProfile = (profile: ProfileRow | null, fallbackEmail?: string | null) => {
+    const email = profile?.email || fallbackEmail || "";
+    const nameFromEmail = email ? email.split("@")[0] : "Student";
+    setStudentName(profile?.full_name || nameFromEmail.charAt(0).toUpperCase() + nameFromEmail.slice(1));
+    setStudentEmail(email);
+    setMajor(profile?.major || "Business");
+    setBudget(profile?.budget || "Under $30,000 per year");
+    setLocations(profile?.locations || "Arizona, Nevada, California");
+    setGoal(
+      profile?.goal ||
+        "Find a college with strong business opportunities, social life, and good long-term value."
+    );
+    setPlan(profile?.plan || "Free");
+    setStatus(profile?.status || "Form not submitted");
+  };
+
+  const fetchUserData = async (currentSession: Session) => {
+    setProfileLoading(true);
+
+    const fallbackName = currentSession.user.user_metadata?.full_name || "";
+    const fallbackEmail = currentSession.user.email || "";
+
+    await supabase.from("profiles").upsert(
+      {
+        id: currentSession.user.id,
+        full_name: fallbackName || null,
+        email: fallbackEmail || null,
+      },
+      { onConflict: "id" }
+    );
+
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("id, full_name, email, major, budget, locations, goal, plan, status")
+      .eq("id", currentSession.user.id)
+      .maybeSingle();
+
+    hydrateProfile(profileData as ProfileRow | null, fallbackEmail);
+
+    const { data: matchesData } = await supabase
+      .from("matches")
+      .select("id, school, fit, type, note")
+      .eq("user_id", currentSession.user.id)
+      .order("created_at", { ascending: false });
+
+    setRealMatches((matchesData as Match[] | null) || []);
+    setProfileLoading(false);
+  };
+
   useEffect(() => {
     const loadSession = async () => {
       const {
@@ -175,12 +247,12 @@ export default function CollegeFlowWebsite() {
       } = await supabase.auth.getSession();
 
       setSession(currentSession);
-      if (currentSession?.user?.email) {
-        setStudentEmail(currentSession.user.email);
-        const derivedName = currentSession.user.email.split("@")[0];
-        setStudentName(derivedName.charAt(0).toUpperCase() + derivedName.slice(1));
+
+      if (currentSession) {
+        await fetchUserData(currentSession);
         setView("dashboard");
       }
+
       setLoading(false);
     };
 
@@ -188,25 +260,19 @@ export default function CollegeFlowWebsite() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
       setSession(nextSession);
-      if (nextSession?.user?.email) {
-        setStudentEmail(nextSession.user.email);
-        const derivedName = nextSession.user.email.split("@")[0];
-        setStudentName((prev) => prev || derivedName.charAt(0).toUpperCase() + derivedName.slice(1));
+      if (nextSession) {
+        await fetchUserData(nextSession);
         setView("dashboard");
       } else {
+        setRealMatches([]);
         setView("home");
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
-
-  const clearMessages = () => {
-    setErrorMessage("");
-    setSuccessMessage("");
-  };
 
   const handleSignup = async () => {
     clearMessages();
@@ -274,26 +340,71 @@ export default function CollegeFlowWebsite() {
     }
 
     setSuccessMessage("Logged in successfully.");
-    if (status === "Form not submitted") setStatus("Account created");
     setPassword("");
     setView("dashboard");
   };
 
   const handleLogout = async () => {
+    clearMessages();
     await supabase.auth.signOut();
-    setSession(null);
     setPassword("");
     setStudentEmail("");
-    setView("home");
+    setRealMatches([]);
     setSuccessMessage("Logged out successfully.");
   };
 
-  const openMatchForm = () => {
+  const handleSaveProfile = async () => {
     clearMessages();
-    if (status === "Account created" || status === "Form not submitted") {
-      setStatus("Form submitted");
+    if (!session) return;
+
+    setSaveLoading(true);
+    const { error } = await supabase.from("profiles").upsert(
+      {
+        id: session.user.id,
+        full_name: studentName,
+        email: studentEmail,
+        major,
+        budget,
+        locations,
+        goal,
+        plan,
+        status,
+      },
+      { onConflict: "id" }
+    );
+    setSaveLoading(false);
+
+    if (error) {
+      setErrorMessage(error.message);
+      return;
     }
+
+    setSuccessMessage("Profile saved successfully.");
+    setTab("overview");
+  };
+
+  const openMatchForm = async () => {
+    clearMessages();
+    const nextStatus = status === "Account created" || status === "Form not submitted" ? "Form submitted" : status;
+    setStatus(nextStatus);
     setTab("status");
+
+    if (session) {
+      await supabase.from("profiles").upsert(
+        {
+          id: session.user.id,
+          full_name: studentName,
+          email: studentEmail,
+          major,
+          budget,
+          locations,
+          goal,
+          plan,
+          status: nextStatus,
+        },
+        { onConflict: "id" }
+      );
+    }
   };
 
   const primaryButton =
@@ -319,9 +430,7 @@ export default function CollegeFlowWebsite() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-900">
-        <div className="rounded-3xl border border-slate-200 bg-white px-8 py-6 shadow-sm">
-          Loading College Flow...
-        </div>
+        <div className="rounded-3xl border border-slate-200 bg-white px-8 py-6 shadow-sm">Loading College Flow...</div>
       </div>
     );
   }
@@ -330,18 +439,10 @@ export default function CollegeFlowWebsite() {
     <div className="min-h-screen bg-slate-50 px-6 py-12 text-slate-900 lg:px-8">
       <div className="mx-auto max-w-5xl overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white shadow-xl shadow-slate-200/60 lg:grid lg:grid-cols-[1fr,0.9fr]">
         <div className="p-8 lg:p-12">
-          <button onClick={() => setView("home")} className="mb-8 text-sm font-medium text-slate-500 hover:text-slate-900">
-            ← Back to site
-          </button>
+          <button onClick={() => setView("home")} className="mb-8 text-sm font-medium text-slate-500 hover:text-slate-900">← Back to site</button>
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">College Flow</p>
-          <h1 className="mt-3 text-4xl font-bold tracking-tight text-slate-900">
-            {mode === "signup" ? "Create your student account" : "Log back into your dashboard"}
-          </h1>
-          <p className="mt-4 max-w-xl text-lg leading-8 text-slate-600">
-            {mode === "signup"
-              ? "Start building a personal dashboard where you can track your form status, recommendations, and future upgrades."
-              : "Access your College Flow dashboard to review your status, profile, and personalized college recommendations."}
-          </p>
+          <h1 className="mt-3 text-4xl font-bold tracking-tight text-slate-900">{mode === "signup" ? "Create your student account" : "Log back into your dashboard"}</h1>
+          <p className="mt-4 max-w-xl text-lg leading-8 text-slate-600">{mode === "signup" ? "Start building a personal dashboard where you can track your form status, recommendations, and future upgrades." : "Access your College Flow dashboard to review your status, profile, and personalized college recommendations."}</p>
 
           {errorMessage && <div className="mt-6 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">{errorMessage}</div>}
           {successMessage && <div className="mt-6 rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{successMessage}</div>}
@@ -350,52 +451,22 @@ export default function CollegeFlowWebsite() {
             {mode === "signup" && (
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">Full name</label>
-                <input
-                  value={studentName}
-                  onChange={(e) => setStudentName(e.target.value)}
-                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900"
-                  placeholder="Your full name"
-                />
+                <input value={studentName} onChange={(e) => setStudentName(e.target.value)} className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900" placeholder="Your full name" />
               </div>
             )}
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">Email</label>
-              <input
-                value={studentEmail}
-                onChange={(e) => setStudentEmail(e.target.value)}
-                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900"
-                placeholder="you@example.com"
-              />
+              <input value={studentEmail} onChange={(e) => setStudentEmail(e.target.value)} className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900" placeholder="you@example.com" />
             </div>
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900"
-                placeholder={mode === "signup" ? "Create a password" : "Enter your password"}
-              />
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900" placeholder={mode === "signup" ? "Create a password" : "Enter your password"} />
             </div>
           </div>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <button
-              onClick={mode === "signup" ? handleSignup : handleLogin}
-              disabled={authLoading}
-              className={primaryButton}
-            >
-              {authLoading ? "Please wait..." : mode === "signup" ? "Create Account" : "Log In"}
-            </button>
-            <button
-              onClick={() => {
-                clearMessages();
-                setView(mode === "signup" ? "login" : "signup");
-              }}
-              className={secondaryButton}
-            >
-              {mode === "signup" ? "Already have an account?" : "Need to create an account?"}
-            </button>
+            <button onClick={mode === "signup" ? handleSignup : handleLogin} disabled={authLoading} className={primaryButton}>{authLoading ? "Please wait..." : mode === "signup" ? "Create Account" : "Log In"}</button>
+            <button onClick={() => { clearMessages(); setView(mode === "signup" ? "login" : "signup"); }} className={secondaryButton}>{mode === "signup" ? "Already have an account?" : "Need to create an account?"}</button>
           </div>
         </div>
 
@@ -417,9 +488,7 @@ export default function CollegeFlowWebsite() {
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
           <button onClick={() => setView("home")} className="flex items-center gap-3 text-left">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-sm font-bold text-white">
-              CF
-            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-sm font-bold text-white">CF</div>
             <div>
               <p className="text-sm font-semibold">College Flow</p>
               <p className="text-xs text-slate-500">Student Dashboard</p>
@@ -431,9 +500,7 @@ export default function CollegeFlowWebsite() {
               <p className="text-sm font-semibold text-slate-900">{studentName || session?.user?.email?.split("@")[0] || "Student"}</p>
               <p className="text-xs text-slate-500">{plan} Plan</p>
             </div>
-            <button onClick={handleLogout} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
-              Log Out
-            </button>
+            <button onClick={handleLogout} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Log Out</button>
           </div>
         </div>
       </header>
@@ -456,6 +523,8 @@ export default function CollegeFlowWebsite() {
         </aside>
 
         <section className="space-y-6">
+          {profileLoading && <div className="rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-700">Loading your dashboard data...</div>}
+          {errorMessage && <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">{errorMessage}</div>}
           {successMessage && <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{successMessage}</div>}
 
           {tab === "overview" && (
@@ -473,7 +542,7 @@ export default function CollegeFlowWebsite() {
                 </div>
                 <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Top Matches</p>
-                  <p className="mt-3 text-3xl font-bold">{matches.length}</p>
+                  <p className="mt-3 text-3xl font-bold">{displayedMatches.length}</p>
                   <p className="mt-2 text-sm text-slate-500">Personalized recommendations appear here once your review is complete.</p>
                 </div>
               </div>
@@ -485,32 +554,20 @@ export default function CollegeFlowWebsite() {
                       <p className="text-sm font-semibold text-slate-900">Next step</p>
                       <h3 className="mt-1 text-2xl font-bold">Complete your match intake</h3>
                     </div>
-                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                      Student Dashboard Live
-                    </span>
+                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">Student Dashboard Live</span>
                   </div>
-                  <p className="mt-4 max-w-2xl text-slate-600">
-                    Your dashboard is now personalized around your profile. The next step is submitting the College Flow form so your recommendations can move into review and then into your dashboard.
-                  </p>
+                  <p className="mt-4 max-w-2xl text-slate-600">Your dashboard is now personalized around your profile. The next step is submitting the College Flow form so your recommendations can move into review and then into your dashboard.</p>
                   <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                    <a href={formLink} target="_blank" rel="noreferrer" onClick={openMatchForm} className={primaryButton}>
-                      Complete Match Form
-                    </a>
-                    <button onClick={() => setTab("profile")} className={secondaryButton}>
-                      Review Profile
-                    </button>
+                    <a href={formLink} target="_blank" rel="noreferrer" onClick={openMatchForm} className={primaryButton}>Complete Match Form</a>
+                    <button onClick={() => setTab("profile")} className={secondaryButton}>Review Profile</button>
                   </div>
                 </div>
 
                 <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
                   <p className="text-sm font-semibold text-slate-900">AI Counselor Preview</p>
                   <div className="mt-4 space-y-3 text-sm">
-                    <div className="rounded-2xl bg-slate-100 p-3 text-slate-700">
-                      Which of my top schools is best for business and social life?
-                    </div>
-                    <div className="rounded-2xl bg-slate-900 p-3 text-white">
-                      Future premium AI guidance will help students compare schools, think through fit, and ask next-step questions inside their dashboard.
-                    </div>
+                    <div className="rounded-2xl bg-slate-100 p-3 text-slate-700">Which of my top schools is best for business and social life?</div>
+                    <div className="rounded-2xl bg-slate-900 p-3 text-white">Future premium AI guidance will help students compare schools, think through fit, and ask next-step questions inside their dashboard.</div>
                   </div>
                   <p className="mt-4 text-sm text-slate-500">This will become a real feature in the next build phase.</p>
                 </div>
@@ -556,12 +613,8 @@ export default function CollegeFlowWebsite() {
               </div>
 
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                <button onClick={() => setSuccessMessage("Profile updated in the dashboard view.")} className={primaryButton}>
-                  Save Profile
-                </button>
-                <a href={formLink} target="_blank" rel="noreferrer" onClick={openMatchForm} className={secondaryButton}>
-                  Open Match Form
-                </a>
+                <button onClick={handleSaveProfile} disabled={saveLoading} className={primaryButton}>{saveLoading ? "Saving..." : "Save Profile"}</button>
+                <a href={formLink} target="_blank" rel="noreferrer" onClick={openMatchForm} className={secondaryButton}>Open Match Form</a>
               </div>
             </div>
           )}
@@ -572,14 +625,7 @@ export default function CollegeFlowWebsite() {
               <h3 className="mt-1 text-2xl font-bold">Track where you are in the process</h3>
               <div className="mt-8 grid gap-4 md:grid-cols-4">
                 {statusStages.map((item) => (
-                  <div
-                    key={item}
-                    className={`rounded-[1.5rem] border p-5 ${
-                      stageIsActive(item)
-                        ? "border-slate-900 bg-slate-900 text-white"
-                        : "border-slate-200 bg-slate-50 text-slate-500"
-                    }`}
-                  >
+                  <div key={item} className={`rounded-[1.5rem] border p-5 ${stageIsActive(item) ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-slate-50 text-slate-500"}`}>
                     <p className="text-sm font-semibold">{item}</p>
                   </div>
                 ))}
@@ -588,16 +634,10 @@ export default function CollegeFlowWebsite() {
               <div className="mt-8 rounded-[1.5rem] bg-slate-50 p-6">
                 <p className="text-sm font-semibold text-slate-900">Current status</p>
                 <p className="mt-2 text-3xl font-bold text-slate-900">{status}</p>
-                <p className="mt-3 max-w-2xl text-slate-600">
-                  Once your form is submitted, College Flow can move your profile into review and prepare your first personalized school list.
-                </p>
+                <p className="mt-3 max-w-2xl text-slate-600">Once your form is submitted, College Flow can move your profile into review and prepare your first personalized school list.</p>
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                  <a href={formLink} target="_blank" rel="noreferrer" onClick={openMatchForm} className={primaryButton}>
-                    Submit / Reopen Match Form
-                  </a>
-                  <button onClick={() => setStatus("Matches ready")} className={secondaryButton}>
-                    Demo: Mark Matches Ready
-                  </button>
+                  <a href={formLink} target="_blank" rel="noreferrer" onClick={openMatchForm} className={primaryButton}>Submit / Reopen Match Form</a>
+                  <button onClick={() => setStatus("Matches ready")} className={secondaryButton}>Demo: Mark Matches Ready</button>
                 </div>
               </div>
             </div>
@@ -610,27 +650,21 @@ export default function CollegeFlowWebsite() {
                   <p className="text-sm font-semibold text-slate-900">My Matches</p>
                   <h3 className="mt-1 text-2xl font-bold">Your personalized recommendations</h3>
                 </div>
-                <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
-                  Manual recommendations for now
-                </span>
+                <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">{realMatches.length > 0 ? "Loaded from your account" : "Manual recommendations for now"}</span>
               </div>
 
-              <p className="mt-4 max-w-3xl text-slate-600">
-                This is where students will see their personalized college list. Right now, this can be powered by your manual recommendations while the rest of the platform grows.
-              </p>
+              <p className="mt-4 max-w-3xl text-slate-600">This is where students will see their personalized college list. Right now, you can manually add rows into Supabase and they will appear here for each student.</p>
 
               <div className="mt-6 space-y-4">
-                {matches.map((item) => (
-                  <div key={item.school} className="rounded-[1.5rem] border border-slate-200 p-5">
+                {displayedMatches.map((item) => (
+                  <div key={item.id || item.school} className="rounded-[1.5rem] border border-slate-200 p-5">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <p className="text-xl font-semibold text-slate-900">{item.school}</p>
                         <p className="mt-1 text-sm font-medium text-slate-500">{item.type}</p>
                         <p className="mt-3 max-w-2xl text-slate-600">{item.note}</p>
                       </div>
-                      <span className="whitespace-nowrap rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">
-                        {item.fit}
-                      </span>
+                      <span className="whitespace-nowrap rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">{item.fit}</span>
                     </div>
                   </div>
                 ))}
@@ -643,9 +677,7 @@ export default function CollegeFlowWebsite() {
               <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
                 <p className="text-sm font-semibold text-slate-900">Upgrade your experience</p>
                 <h3 className="mt-1 text-2xl font-bold">Move from free access to a deeper plan</h3>
-                <p className="mt-4 max-w-3xl text-slate-600">
-                  Stripe can be connected next so students can pay for stronger personalized recommendations, faster turnaround, and future AI counselor access.
-                </p>
+                <p className="mt-4 max-w-3xl text-slate-600">Stripe can be connected next so students can pay for stronger personalized recommendations, faster turnaround, and future AI counselor access.</p>
               </div>
 
               <div className="grid gap-6 lg:grid-cols-3">
@@ -661,15 +693,10 @@ export default function CollegeFlowWebsite() {
                     <p className="mt-6 text-4xl font-bold">{pkg.price}</p>
                     <ul className="mt-6 space-y-3 text-sm">
                       {pkg.features.map((feature) => (
-                        <li key={feature} className="flex gap-3">
-                          <span>✓</span>
-                          <span className={pkg.highlight ? "text-slate-200" : "text-slate-600"}>{feature}</span>
-                        </li>
+                        <li key={feature} className="flex gap-3"><span>✓</span><span className={pkg.highlight ? "text-slate-200" : "text-slate-600"}>{feature}</span></li>
                       ))}
                     </ul>
-                    <button onClick={() => setPlan(pkg.name)} className={`mt-8 w-full rounded-2xl px-4 py-3 text-sm font-semibold transition ${pkg.highlight ? "bg-white text-slate-900 hover:bg-slate-100" : "bg-slate-900 text-white hover:opacity-90"}`}>
-                      {pkg.name === plan ? "Current Plan" : pkg.cta}
-                    </button>
+                    <button onClick={() => setPlan(pkg.name)} className={`mt-8 w-full rounded-2xl px-4 py-3 text-sm font-semibold transition ${pkg.highlight ? "bg-white text-slate-900 hover:bg-slate-100" : "bg-slate-900 text-white hover:opacity-90"}`}>{pkg.name === plan ? "Current Plan" : pkg.cta}</button>
                   </div>
                 ))}
               </div>
@@ -706,12 +733,8 @@ export default function CollegeFlowWebsite() {
           </nav>
 
           <div className="flex items-center gap-3">
-            <button onClick={() => setView("login")} className="hidden rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 md:inline-flex">
-              Log In
-            </button>
-            <button onClick={() => setView("signup")} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:opacity-90">
-              Create Account
-            </button>
+            <button onClick={() => setView("login")} className="hidden rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 md:inline-flex">Log In</button>
+            <button onClick={() => setView("signup")} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:opacity-90">Create Account</button>
           </div>
         </div>
       </header>
@@ -721,22 +744,12 @@ export default function CollegeFlowWebsite() {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.10),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.10),transparent_35%)]" />
           <div className="relative mx-auto grid max-w-7xl items-center gap-14 px-6 py-16 lg:grid-cols-2 lg:px-8 lg:py-24">
             <div>
-              <div className="mb-5 inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 shadow-sm">
-                Built for students who want fit, clarity, and confidence
-              </div>
-              <h1 className="max-w-2xl text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-                Find colleges that actually fit you.
-              </h1>
-              <p className="mt-6 max-w-xl text-lg leading-8 text-slate-600">
-                College Flow helps students discover schools based on budget, major, goals, location, and lifestyle — then gives them a real dashboard to track next steps, recommendations, and future counselor support.
-              </p>
+              <div className="mb-5 inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 shadow-sm">Built for students who want fit, clarity, and confidence</div>
+              <h1 className="max-w-2xl text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">Find colleges that actually fit you.</h1>
+              <p className="mt-6 max-w-xl text-lg leading-8 text-slate-600">College Flow helps students discover schools based on budget, major, goals, location, and lifestyle — then gives them a real dashboard to track next steps, recommendations, and future counselor support.</p>
               <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-                <button onClick={() => setView("signup")} className="rounded-2xl bg-slate-900 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-slate-200 transition hover:-translate-y-0.5 hover:opacity-95">
-                  Create My Account
-                </button>
-                <a href="#how-it-works" className="rounded-2xl border border-slate-300 px-6 py-3 text-base font-semibold text-slate-700 transition hover:bg-slate-50">
-                  See How It Works
-                </a>
+                <button onClick={() => setView("signup")} className="rounded-2xl bg-slate-900 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-slate-200 transition hover:-translate-y-0.5 hover:opacity-95">Create My Account</button>
+                <a href="#how-it-works" className="rounded-2xl border border-slate-300 px-6 py-3 text-base font-semibold text-slate-700 transition hover:bg-slate-50">See How It Works</a>
               </div>
               <div className="mt-8 flex flex-wrap gap-6 text-sm text-slate-500">
                 <div>✓ Real student dashboard</div>
@@ -757,21 +770,9 @@ export default function CollegeFlowWebsite() {
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-3">
-                    <div className="rounded-2xl bg-white p-4 shadow-sm">
-                      <p className="text-xs uppercase tracking-wide text-slate-500">Profile</p>
-                      <p className="mt-2 text-2xl font-bold">Personal</p>
-                      <p className="mt-2 text-sm text-slate-500">Each student gets their own account, status, and results.</p>
-                    </div>
-                    <div className="rounded-2xl bg-white p-4 shadow-sm">
-                      <p className="text-xs uppercase tracking-wide text-slate-500">Current status</p>
-                      <p className="mt-2 text-2xl font-bold">{status}</p>
-                      <p className="mt-2 text-sm text-slate-500">A real product feel even before full automation.</p>
-                    </div>
-                    <div className="rounded-2xl bg-white p-4 shadow-sm">
-                      <p className="text-xs uppercase tracking-wide text-slate-500">Future AI</p>
-                      <p className="mt-2 text-2xl font-bold">Ready</p>
-                      <p className="mt-2 text-sm text-slate-500">The counselor can plug into this dashboard later.</p>
-                    </div>
+                    <div className="rounded-2xl bg-white p-4 shadow-sm"><p className="text-xs uppercase tracking-wide text-slate-500">Profile</p><p className="mt-2 text-2xl font-bold">Personal</p><p className="mt-2 text-sm text-slate-500">Each student gets their own account, status, and results.</p></div>
+                    <div className="rounded-2xl bg-white p-4 shadow-sm"><p className="text-xs uppercase tracking-wide text-slate-500">Current status</p><p className="mt-2 text-2xl font-bold">{status}</p><p className="mt-2 text-sm text-slate-500">A real product feel even before full automation.</p></div>
+                    <div className="rounded-2xl bg-white p-4 shadow-sm"><p className="text-xs uppercase tracking-wide text-slate-500">Future AI</p><p className="mt-2 text-2xl font-bold">Ready</p><p className="mt-2 text-sm text-slate-500">The counselor can plug into this dashboard later.</p></div>
                   </div>
 
                   <div className="mt-4 grid gap-4 lg:grid-cols-[1.2fr,0.8fr]">
@@ -781,8 +782,8 @@ export default function CollegeFlowWebsite() {
                         <button onClick={() => setView("dashboard")} className="text-sm font-medium text-slate-500">Open dashboard</button>
                       </div>
                       <div className="space-y-3">
-                        {matches.map((item) => (
-                          <div key={item.school} className="rounded-2xl border border-slate-100 p-4">
+                        {displayedMatches.map((item) => (
+                          <div key={item.id || item.school} className="rounded-2xl border border-slate-100 p-4">
                             <div className="flex items-start justify-between gap-4">
                               <div>
                                 <p className="font-semibold text-slate-900">{item.school}</p>
@@ -798,15 +799,13 @@ export default function CollegeFlowWebsite() {
                     <div className="rounded-2xl bg-slate-900 p-4 text-white shadow-sm">
                       <div className="flex items-center justify-between">
                         <p className="font-semibold">Next phase</p>
-                        <span className="rounded-full bg-white/10 px-3 py-1 text-xs">Phase 2</span>
+                        <span className="rounded-full bg-white/10 px-3 py-1 text-xs">Dashboard Live</span>
                       </div>
                       <div className="mt-4 space-y-3 text-sm">
-                        <div className="rounded-2xl bg-white/10 p-3">Accounts make the experience feel personal before AI is fully live.</div>
-                        <div className="rounded-2xl bg-white p-3 text-slate-900">Students can log in, see their own profile, track form status, and later view recommendations in one place.</div>
+                        <div className="rounded-2xl bg-white/10 p-3">Accounts and dashboard data are now connected to Supabase.</div>
+                        <div className="rounded-2xl bg-white p-3 text-slate-900">Students can log in, save profile details, track form status, and eventually view real recommendations in one place.</div>
                       </div>
-                      <button onClick={() => setView("signup")} className="mt-4 w-full rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100">
-                        Build My Account
-                      </button>
+                      <button onClick={() => setView("signup")} className="mt-4 w-full rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100">Build My Account</button>
                     </div>
                   </div>
                 </div>
@@ -876,15 +875,10 @@ export default function CollegeFlowWebsite() {
                 <p className="mt-6 text-4xl font-bold">{pkg.price}</p>
                 <ul className="mt-6 space-y-3 text-sm">
                   {pkg.features.map((feature) => (
-                    <li key={feature} className="flex gap-3">
-                      <span>✓</span>
-                      <span className={pkg.highlight ? "text-slate-200" : "text-slate-600"}>{feature}</span>
-                    </li>
+                    <li key={feature} className="flex gap-3"><span>✓</span><span className={pkg.highlight ? "text-slate-200" : "text-slate-600"}>{feature}</span></li>
                   ))}
                 </ul>
-                <button onClick={() => setView("signup")} className={`mt-8 w-full rounded-2xl px-4 py-3 text-sm font-semibold transition ${pkg.highlight ? "bg-white text-slate-900 hover:bg-slate-100" : "bg-slate-900 text-white hover:opacity-90"}`}>
-                  {pkg.cta}
-                </button>
+                <button onClick={() => setView("signup")} className={`mt-8 w-full rounded-2xl px-4 py-3 text-sm font-semibold transition ${pkg.highlight ? "bg-white text-slate-900 hover:bg-slate-100" : "bg-slate-900 text-white hover:opacity-90"}`}>{pkg.cta}</button>
               </div>
             ))}
           </div>
@@ -935,11 +929,11 @@ export default function CollegeFlowWebsite() {
             </div>
 
             <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
-              <p className="text-sm font-semibold text-slate-500">What Phase 2 unlocks</p>
+              <p className="text-sm font-semibold text-slate-500">What the dashboard now unlocks</p>
               <div className="mt-6 space-y-4 text-sm text-slate-600">
                 <div className="rounded-2xl border border-slate-100 p-4"><p className="font-semibold text-slate-900">Real user flow</p><p className="mt-1">Landing page → account → dashboard → form → recommendation status.</p></div>
-                <div className="rounded-2xl border border-slate-100 p-4"><p className="font-semibold text-slate-900">Better trust</p><p className="mt-1">Students feel like they are using a real product instead of just clicking into a form.</p></div>
-                <div className="rounded-2xl border border-slate-100 p-4"><p className="font-semibold text-slate-900">Future paid features</p><p className="mt-1">This makes it much easier to add Stripe and AI counselor functionality later.</p></div>
+                <div className="rounded-2xl border border-slate-100 p-4"><p className="font-semibold text-slate-900">Saved profile data</p><p className="mt-1">Students can save profile info and return to it later after logging back in.</p></div>
+                <div className="rounded-2xl border border-slate-100 p-4"><p className="font-semibold text-slate-900">Future paid features</p><p className="mt-1">This makes it much easier to add Stripe and AI counselor functionality next.</p></div>
               </div>
             </div>
           </div>
